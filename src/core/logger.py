@@ -76,3 +76,19 @@ def setup_logging(log_level: Optional[str] = None) -> None:
     logging.getLogger("celery").setLevel(logging.INFO)
 
 
+def get_logger(name: str) -> logging.Logger:
+    """
+    Get or create a logger with the given name.
+    
+    Args:
+        name: Logger name (usually __name__)
+        
+    Returns:
+        Configured logger instance
+    """
+    if name not in _loggers:
+        logger = logging.getLogger(name)
+        _loggers[name] = logger
+    return _loggers[name]
+
+
