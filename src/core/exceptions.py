@@ -50,3 +50,27 @@ class AWSError(ArgusError):
         self.operation = operation
 
 
+class DatabaseError(ArgusError):
+    """Raised when database operations fail."""
+
+    pass
+
+
+class ValidationError(ArgusError):
+    """Raised when input validation fails."""
+
+    def __init__(self, message: str, field: str | None = None, details: dict | None = None):
+        super().__init__(message, details)
+        self.field = field
+
+
+class GitError(ArgusError):
+    """Raised when Git operations fail."""
+
+    def __init__(
+        self, message: str, repository: str | None = None, details: dict | None = None
+    ):
+        super().__init__(message, details)
+        self.repository = repository
+
+
