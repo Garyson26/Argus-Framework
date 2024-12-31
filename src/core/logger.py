@@ -92,3 +92,21 @@ def get_logger(name: str) -> logging.Logger:
     return _loggers[name]
 
 
+class ScanLogger:
+    """
+    Specialized logger for scan operations with progress tracking.
+    
+    Provides methods for logging scan events with appropriate styling.
+    """
+
+    def __init__(self, scan_type: str, target: str):
+        self.scan_type = scan_type
+        self.target = target
+        self.logger = get_logger(f"argus.scanner.{scan_type}")
+
+    def start(self) -> None:
+        """Log scan start."""
+        console.print(
+            f"[scan.start]🔍 Starting {self.scan_type.upper()} scan on: {self.target}[/]"
+        )
+
