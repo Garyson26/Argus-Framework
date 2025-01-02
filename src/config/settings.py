@@ -70,3 +70,12 @@ class Settings(BaseSettings):
             return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
+    # Celery
+    celery_broker_url: Optional[str] = None
+    celery_result_backend: Optional[str] = None
+
+    @property
+    def celery_broker(self) -> str:
+        """Get Celery broker URL."""
+        return self.celery_broker_url or self.redis_url
+
