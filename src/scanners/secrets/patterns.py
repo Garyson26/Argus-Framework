@@ -146,3 +146,84 @@ PRIVATE_KEY_PATTERNS = [
     ),
 ]
 
+GITHUB_PATTERNS = [
+    SecretPattern(
+        name="GitHub Personal Access Token",
+        secret_type=SecretType.GITHUB_TOKEN,
+        pattern=r"ghp_[A-Za-z0-9_]{36,}",
+        severity=Severity.CRITICAL,
+        description="GitHub Personal Access Token found",
+        suggestion="Revoke this token immediately and use GitHub Apps or environment variables",
+        confidence=0.98,
+    ),
+    SecretPattern(
+        name="GitHub OAuth Token",
+        secret_type=SecretType.GITHUB_TOKEN,
+        pattern=r"gho_[A-Za-z0-9_]{36,}",
+        severity=Severity.CRITICAL,
+        description="GitHub OAuth Token found",
+        suggestion="Revoke this token immediately",
+        confidence=0.98,
+    ),
+    SecretPattern(
+        name="GitHub App Token",
+        secret_type=SecretType.GITHUB_APP_TOKEN,
+        pattern=r"(?:ghu|ghs)_[A-Za-z0-9_]{36,}",
+        severity=Severity.CRITICAL,
+        description="GitHub App Token found",
+        suggestion="Rotate this token immediately",
+        confidence=0.98,
+    ),
+    SecretPattern(
+        name="GitHub Refresh Token",
+        secret_type=SecretType.GITHUB_TOKEN,
+        pattern=r"ghr_[A-Za-z0-9_]{36,}",
+        severity=Severity.HIGH,
+        description="GitHub Refresh Token found",
+        suggestion="Revoke and rotate this token",
+        confidence=0.98,
+    ),
+]
+
+GITLAB_PATTERNS = [
+    SecretPattern(
+        name="GitLab Personal Access Token",
+        secret_type=SecretType.GITLAB_TOKEN,
+        pattern=r"glpat-[A-Za-z0-9\-_]{20,}",
+        severity=Severity.CRITICAL,
+        description="GitLab Personal Access Token found",
+        suggestion="Revoke this token and use CI/CD variables instead",
+        confidence=0.98,
+    ),
+]
+
+SLACK_PATTERNS = [
+    SecretPattern(
+        name="Slack Bot Token",
+        secret_type=SecretType.SLACK_TOKEN,
+        pattern=r"xoxb-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24}",
+        severity=Severity.HIGH,
+        description="Slack Bot Token found",
+        suggestion="Rotate this token in your Slack app settings",
+        confidence=0.98,
+    ),
+    SecretPattern(
+        name="Slack User Token",
+        secret_type=SecretType.SLACK_TOKEN,
+        pattern=r"xoxp-[0-9]{10,13}-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{32}",
+        severity=Severity.HIGH,
+        description="Slack User Token found",
+        suggestion="Rotate this token immediately",
+        confidence=0.98,
+    ),
+    SecretPattern(
+        name="Slack Webhook URL",
+        secret_type=SecretType.SLACK_WEBHOOK,
+        pattern=r"https://hooks\.slack\.com/services/T[A-Z0-9]{8,}/B[A-Z0-9]{8,}/[a-zA-Z0-9]{24}",
+        severity=Severity.MEDIUM,
+        description="Slack Webhook URL found",
+        suggestion="Regenerate this webhook URL and store it as an environment variable",
+        confidence=0.98,
+    ),
+]
+
