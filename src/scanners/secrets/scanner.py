@@ -75,3 +75,151 @@ class SecretScanner(BaseScanner):
     - Git history analysis for secrets in past commits
     """
     
+    scanner_type = "secret"
+    
+    def __init__(
+        self,
+        scan_git_history: bool = True,
+        max_commits: int = 1000,
+        entropy_threshold: float = 4.5,
+        patterns: Optional[list[SecretPattern]] = None,
+        include_extensions: Optional[set[str]] = None,
+        exclude_patterns: Optional[list[str]] = None,
+        debug: bool = False,
+        parallel: bool = True,
+        batch_size: int = DEFAULT_BATCH_SIZE,
+        max_workers: int = DEFAULT_MAX_WORKERS,
+        show_progress: bool = True,
+    ):
+        """
+        Initialize the secret scanner.
+        
+        Args:
+            scan_git_history: Whether to scan git commit history
+            max_commits: Maximum number of commits to scan
+            entropy_threshold: Threshold for high-entropy detection
+            patterns: Custom patterns (defaults to all patterns)
+            include_extensions: Additional file extensions to scan
+            exclude_patterns: Patterns to exclude from scanning
+            debug: Enable debug mode for verbose output
+            parallel: Enable parallel file scanning (default: True)
+            batch_size: Number of files to process per batch
+            max_workers: Maximum concurrent workers
+            show_progress: Show progress bar during scanning
+        """
+        super().__init__()
+        
+        settings = get_settings()
+        
+        self.scan_git_history = scan_git_history
+        self.max_commits = max_commits
+        self.entropy_threshold = entropy_threshold
+        self.patterns = patterns or get_all_patterns()
+        self.debug = debug or settings.debug
+        
+        # Parallel processing settings
+        self.parallel = parallel
+        self.batch_size = batch_size
+        self.max_workers = max_workers
+        self.show_progress = show_progress
+        self._executor: Optional[ThreadPoolExecutor] = None
+        self._progress: Optional[ScanProgress] = None
+        
+        # File extensions
+        self.extensions = SCANNABLE_EXTENSIONS.copy()
+        if include_extensions:
+            self.extensions.update(include_extensions)
+        
+        # Exclude patterns
+        self.exclude_patterns = exclude_patterns or [
+            "node_modules",
+            ".git",
+            "__pycache__",
+            ".venv",
+            "venv",
+            ".tox",
+            "dist",
+            "build",
+            ".idea",
+            ".vscode",
+        ]
+        
+        self._scan_logger: Optional[ScanLogger] = None
+        self._stats = {
+            "files_scanned": 0,
+            "commits_scanned": 0,
+            "patterns_checked": len(self.patterns),
+            "bytes_scanned": 0,
+        }
+        self._lock = asyncio.Lock()
+
+    async def scan(self, target: str) -> dict[str, Any]:
+        """
+        Scan a target path or repository for secrets.
+        
+        Args:
+            target: Path to directory/repository or Git URL
+            
+        Returns:
+            Dictionary containing scan results
+        """
+        started_at = datetime.utcnow()
+        self.clear_findings()
+        self._stats = {
+            "files_scanned": 0,
+            "commits_scanned": 0,
+            "patterns_checked": len(self.patterns),
+            "bytes_scanned": 0,
+        }
+        
+        self._scan_logger = ScanLogger("secret", target)
+        self._scan_logger.start()
+        
+        try:
+            target_path = Path(target).resolve()
+            
+            if not target_path.exists():
+                raise SecretScanError(f"Target path does not exist: {target}")
+            
+            # Check if it's a git repository
+            git_helper = None
+            if self._is_git_repo(target_path):
+                git_helper = GitHelper(str(target_path))
+                
+                if self.scan_git_history:
+                    self._debug_log(f"Scanning git history (max {self.max_commits} commits)")
+                    await self._scan_git_history(git_helper)
+            
+            # Scan current files
+            self._debug_log("Scanning current files")
+            await self._scan_directory(target_path)
+            
+            # Create result
+            result = self.create_result(
+                target=str(target_path),
+                started_at=started_at,
+                metadata=self._stats,
+            )
+            
+            self._scan_logger.end(len(self._findings))
+            
+            # Log findings summary
+            self._log_findings_summary()
+            
+            return result.to_dict()
+            
+        except SecretScanError:
+            raise
+        except Exception as e:
+            self._scan_logger.error(f"Scan failed: {e}", e)
+            raise SecretScanError(f"Secret scan failed: {e}")
+
+    def _is_git_repo(self, path: Path) -> bool:
+        """Check if path is a git repository."""
+        return (path / ".git").exists()
+
+    def _debug_log(self, message: str) -> None:
+        """Log debug message if debug mode is enabled."""
+        if self.debug:
+            logger.debug(f"[SECRET SCAN] {message}")
+

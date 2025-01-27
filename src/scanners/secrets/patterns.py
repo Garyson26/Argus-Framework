@@ -227,3 +227,49 @@ SLACK_PATTERNS = [
     ),
 ]
 
+GOOGLE_PATTERNS = [
+    SecretPattern(
+        name="Google API Key",
+        secret_type=SecretType.GOOGLE_API_KEY,
+        pattern=r"AIza[0-9A-Za-z\-_]{35}",
+        severity=Severity.HIGH,
+        description="Google API Key found",
+        suggestion="Restrict this API key or rotate it in Google Cloud Console",
+        confidence=0.95,
+    ),
+    SecretPattern(
+        name="Google OAuth Client Secret",
+        secret_type=SecretType.GOOGLE_OAUTH,
+        pattern=r"(?i)client[_-]?secret['\"]?\s*[:=]\s*['\"]?([a-zA-Z0-9\-_]{24})['\"]?",
+        severity=Severity.HIGH,
+        description="Google OAuth Client Secret found",
+        suggestion="Rotate this secret in Google Cloud Console",
+        confidence=0.7,
+        keywords=["google", "oauth", "client"],
+    ),
+]
+
+JWT_PATTERNS = [
+    SecretPattern(
+        name="JSON Web Token",
+        secret_type=SecretType.JWT,
+        pattern=r"eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]+",
+        severity=Severity.MEDIUM,
+        description="JWT token found in code",
+        suggestion="JWTs should not be hardcoded. Use proper token management.",
+        confidence=0.9,
+    ),
+]
+
+DATABASE_PATTERNS = [
+    SecretPattern(
+        name="Database Connection String",
+        secret_type=SecretType.DATABASE_URL,
+        pattern=r"(?i)(?:postgres|mysql|mongodb|redis|mssql)(?:ql)?://[^\s:]+:[^\s@]+@[^\s/]+(?:/[^\s]*)?",
+        severity=Severity.CRITICAL,
+        description="Database connection string with credentials found",
+        suggestion="Use environment variables or secrets manager for database credentials",
+        confidence=0.95,
+    ),
+]
+
