@@ -57,3 +57,62 @@ def is_high_entropy(
         min_length: Minimum string length to consider
         max_length: Maximum string length to consider
         
+    Returns:
+        True if string has high entropy
+    """
+    # Skip strings that are too short or too long
+    if len(data) < min_length or len(data) > max_length:
+        return False
+    
+    # Skip strings that are clearly not secrets
+    if _is_likely_not_secret(data):
+        return False
+    
+    entropy = calculate_entropy(data)
+    return entropy >= threshold
+
+
+def _is_likely_not_secret(data: str) -> bool:
+    """
+    Heuristics to filter out strings that look high-entropy but aren't secrets.
+    
+    Args:
+        data: String to check
+        
+    Returns:
+        True if string is likely NOT a secret
+    """
+    data_lower = data.lower()
+    
+    # Common false positives
+    false_positive_indicators = [
+        # UUIDs (high entropy but not secrets)
+        lambda s: s.count('-') == 4 and len(s) == 36,
+        # Hashes that are likely checksums, not secrets
+        lambda s: len(s) in (32, 40, 64, 128) and all(c in '0123456789abcdef' for c in s.lower()),
+        # Base64 encoded common strings
+        lambda s: s.endswith('==') and len(s) < 30,
+        # File paths
+        lambda s: '/' in s and s.count('/') > 2,
+        # URLs without credentials
+        lambda s: s.startswith(('http://', 'https://')) and '@' not in s,
+        # Package versions
+        lambda s: s.count('.') >= 2 and all(c in '0123456789.' for c in s),
+    ]
+    
+    for check in false_positive_indicators:
+        try:
+            if check(data):
+                return True
+        except Exception:
+            pass
+    
+    # Check character distribution - secrets usually have mixed case and digits
+    has_upper = any(c in string.ascii_uppercase for c in data)
+    has_lower = any(c in string.ascii_lowercase for c in data)
+    has_digit = any(c in string.digits for c in data)
+    
+    # If it's all one type, probably not a secret
+    if sum([has_upper, has_lower, has_digit]) < 2:
+        return True
+    
