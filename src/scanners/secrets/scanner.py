@@ -223,3 +223,73 @@ class SecretScanner(BaseScanner):
         if self.debug:
             logger.debug(f"[SECRET SCAN] {message}")
 
+    async def _scan_git_history(self, git_helper: GitHelper) -> None:
+        """Scan git commit history for secrets."""
+        try:
+            commit_count = 0
+            
+            for commit in git_helper.get_commits(max_commits=self.max_commits):
+                commit_count += 1
+                self._stats["commits_scanned"] = commit_count
+                
+                if commit_count % 100 == 0:
+                    self._debug_log(f"Scanned {commit_count} commits...")
+                
+                # Get changed files in this commit
+                changed_files = git_helper.get_changed_files(commit)
+                
+                for file_path in changed_files:
+                    if not self._should_scan_file(file_path):
+                        continue
+                    
+                    # Get file content at this commit
+                    content = git_helper.get_file_at_commit(commit, file_path)
+                    if content is None:
+                        continue
+                    
+                    try:
+                        text = content.decode('utf-8', errors='ignore')
+                        await self._scan_content(
+                            text,
+                            file_path=file_path,
+                            commit_hash=commit.hexsha,
+                        )
+                    except Exception as e:
+                        self._debug_log(f"Error scanning {file_path} at {commit.hexsha[:7]}: {e}")
+                        
+        except Exception as e:
+            self._scan_logger.warning(f"Git history scan error: {e}")
+
+    async def _scan_directory(self, directory: Path) -> None:
+        """
+        Scan directory for secrets with parallel processing.
+        
+        Uses batch processing and concurrent execution for performance.
+        """
+        # Collect scannable files
+        files_to_scan = []
+        for file_path in directory.rglob("*"):
+            if file_path.is_dir():
+                continue
+            if self._is_excluded(file_path):
+                continue
+            relative_path = str(file_path.relative_to(directory))
+            if not self._should_scan_file(relative_path):
+                continue
+            try:
+                file_size = file_path.stat().st_size
+                if file_size > MAX_FILE_SIZE:
+                    self._debug_log(f"Skipping large file: {relative_path} ({file_size} bytes)")
+                    continue
+            except OSError:
+                continue
+            files_to_scan.append((file_path, relative_path))
+        
+        total_files = len(files_to_scan)
+        self._debug_log(f"Found {total_files} files to scan")
+        
+        if self.parallel and total_files > 1:
+            await self._scan_files_parallel(files_to_scan, directory)
+        else:
+            await self._scan_files_sequential(files_to_scan)
+
