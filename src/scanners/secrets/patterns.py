@@ -273,3 +273,65 @@ DATABASE_PATTERNS = [
     ),
 ]
 
+STRIPE_PATTERNS = [
+    SecretPattern(
+        name="Stripe Secret Key",
+        secret_type=SecretType.STRIPE_KEY,
+        pattern=r"sk_(?:live|test)_[0-9a-zA-Z]{24,}",
+        severity=Severity.CRITICAL,
+        description="Stripe Secret Key found",
+        suggestion="Rotate this key in Stripe Dashboard immediately",
+        confidence=0.98,
+    ),
+    SecretPattern(
+        name="Stripe Publishable Key",
+        secret_type=SecretType.STRIPE_KEY,
+        pattern=r"pk_(?:live|test)_[0-9a-zA-Z]{24,}",
+        severity=Severity.LOW,
+        description="Stripe Publishable Key found (less sensitive but shouldn't be in code)",
+        suggestion="Use environment variables for Stripe keys",
+        confidence=0.98,
+    ),
+]
+
+GENERIC_PATTERNS = [
+    SecretPattern(
+        name="Generic API Key",
+        secret_type=SecretType.GENERIC_API_KEY,
+        pattern=r"(?i)(?:api[_-]?key|apikey)['\"]?\s*[:=]\s*['\"]?([a-zA-Z0-9\-_]{20,})['\"]?",
+        severity=Severity.MEDIUM,
+        description="Generic API key found",
+        suggestion="Move API keys to environment variables or secrets manager",
+        confidence=0.7,
+        keywords=["api", "key"],
+    ),
+    SecretPattern(
+        name="Generic Secret",
+        secret_type=SecretType.GENERIC_SECRET,
+        pattern=r"(?i)(?:secret|password|passwd|pwd)['\"]?\s*[:=]\s*['\"]?([^\s'\"]{8,})['\"]?",
+        severity=Severity.MEDIUM,
+        description="Potential secret or password found",
+        suggestion="Remove hardcoded secrets and use a secrets manager",
+        confidence=0.6,
+        keywords=["secret", "password", "passwd", "pwd"],
+    ),
+    SecretPattern(
+        name="Bearer Token",
+        secret_type=SecretType.BEARER_TOKEN,
+        pattern=r"(?i)bearer\s+[a-zA-Z0-9\-_\.]+",
+        severity=Severity.HIGH,
+        description="Bearer token found in code",
+        suggestion="Remove hardcoded bearer tokens",
+        confidence=0.8,
+    ),
+    SecretPattern(
+        name="Basic Auth",
+        secret_type=SecretType.BASIC_AUTH,
+        pattern=r"(?i)basic\s+[a-zA-Z0-9+/=]{20,}",
+        severity=Severity.HIGH,
+        description="Basic authentication credentials found",
+        suggestion="Remove hardcoded credentials",
+        confidence=0.85,
+    ),
+]
+
