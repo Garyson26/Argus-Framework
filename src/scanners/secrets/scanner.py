@@ -293,3 +293,96 @@ class SecretScanner(BaseScanner):
         else:
             await self._scan_files_sequential(files_to_scan)
 
+    async def _scan_files_parallel(self, files: list[tuple[Path, str]], base_dir: Path) -> None:
+        """
+        Scan files in parallel batches.
+        
+        Args:
+            files: List of (file_path, relative_path) tuples
+            base_dir: Base directory for relative paths
+        """
+        total_files = len(files)
+        
+        # Create progress tracker if enabled
+        if self.show_progress:
+            self._progress = ScanProgress(description="Scanning secrets")
+            self._progress.__enter__()
+            self._progress.add_task("files", total=total_files, description="Scanning files")
+        
+        try:
+            # Create thread pool for file I/O
+            self._executor = ThreadPoolExecutor(max_workers=self.max_workers)
+            
+            # Process in batches
+            for batch_start in range(0, total_files, self.batch_size):
+                batch = files[batch_start:batch_start + self.batch_size]
+                
+                # Create tasks for this batch
+                tasks = [self._scan_file_async(fp, rp) for fp, rp in batch]
+                
+                # Execute batch concurrently
+                await asyncio.gather(*tasks, return_exceptions=True)
+            
+        finally:
+            if self._executor:
+                self._executor.shutdown(wait=True)
+                self._executor = None
+            if self._progress:
+                self._progress.__exit__(None, None, None)
+                if self.show_progress:
+                    self._progress.print_summary()
+                self._progress = None
+
+    async def _scan_files_sequential(self, files: list[tuple[Path, str]]) -> None:
+        """Scan files sequentially (fallback for small directories)."""
+        for file_path, relative_path in files:
+            await self._scan_file_async(file_path, relative_path)
+
+    async def _scan_file_async(self, file_path: Path, relative_path: str) -> None:
+        """
+        Scan a single file asynchronously.
+        
+        Args:
+            file_path: Absolute path to file
+            relative_path: Relative path for reporting
+        """
+        try:
+            # Read file using thread pool to avoid blocking
+            loop = asyncio.get_event_loop()
+            if self._executor:
+                content = await loop.run_in_executor(
+                    self._executor, 
+                    file_path.read_bytes
+                )
+            else:
+                content = file_path.read_bytes()
+            
+            # Update stats thread-safely
+            async with self._lock:
+                self._stats["bytes_scanned"] += len(content)
+                self._stats["files_scanned"] += 1
+            
+            # Decode and scan
+            text = content.decode('utf-8', errors='ignore')
+            await self._scan_content(text, file_path=relative_path)
+            
+            # Update progress
+            if self._progress:
+                self._progress.update("files", advance=1)
+                
+        except Exception as e:
+            self._debug_log(f"Error scanning {relative_path}: {e}")
+            if self._progress:
+                self._progress.update("files", advance=1)
+
+    def _should_scan_file(self, file_path: str) -> bool:
+        """Check if a file should be scanned based on extension/name."""
+        path = Path(file_path)
+        
+        # Always scan certain files
+        if path.name.lower() in ALWAYS_SCAN_FILES:
+            return True
+        
+        # Check extension
+        return path.suffix.lower() in self.extensions
+
