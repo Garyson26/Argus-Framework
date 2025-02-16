@@ -386,3 +386,99 @@ class SecretScanner(BaseScanner):
         # Check extension
         return path.suffix.lower() in self.extensions
 
+    def _is_excluded(self, file_path: Path) -> bool:
+        """Check if file path matches any exclude pattern."""
+        path_str = str(file_path)
+        return any(pattern in path_str for pattern in self.exclude_patterns)
+
+    async def _scan_content(
+        self,
+        content: str,
+        file_path: str,
+        commit_hash: Optional[str] = None,
+    ) -> None:
+        """
+        Scan content for secrets.
+        
+        Args:
+            content: File content to scan
+            file_path: Path to the file
+            commit_hash: Git commit hash (if from history)
+        """
+        lines = content.split('\n')
+        
+        # Scan with pattern matching
+        for pattern in self.patterns:
+            matches = pattern.match(content)
+            
+            for match in matches:
+                # Find line number
+                line_number = content[:match.start()].count('\n') + 1
+                
+                # Create finding
+                finding = Finding(
+                    rule_id=f"SECRET-{pattern.secret_type.value.upper()}",
+                    severity=pattern.severity,
+                    title=pattern.name,
+                    description=pattern.description,
+                    file_path=file_path,
+                    line_number=line_number,
+                    commit_hash=commit_hash,
+                    suggestion=pattern.suggestion,
+                    confidence=pattern.confidence,
+                    metadata={
+                        "secret_type": pattern.secret_type.value,
+                        "matched_value": self._mask_secret(match.group()),
+                        "line_content": self._get_line_context(lines, line_number),
+                    },
+                )
+                
+                self.add_finding(finding)
+                self._scan_logger.finding(
+                    pattern.severity.value,
+                    pattern.name,
+                    file_path,
+                )
+        
+        # Scan with entropy detection
+        high_entropy_strings = find_high_entropy_strings(
+            content,
+            threshold=self.entropy_threshold,
+        )
+        
+        for item in high_entropy_strings:
+            # Skip if already matched by a pattern
+            if self._is_pattern_match(item['value']):
+                continue
+            
+            # Find line number
+            line_number = content[:item['start']].count('\n') + 1
+            confidence = calculate_confidence(item['entropy'], self.entropy_threshold)
+            
+            finding = Finding(
+                rule_id="SECRET-HIGH-ENTROPY",
+                severity=Severity.MEDIUM,
+                title="High Entropy String Detected",
+                description="A high-entropy string was detected that may be a secret",
+                file_path=file_path,
+                line_number=line_number,
+                commit_hash=commit_hash,
+                suggestion="Review this string to determine if it's a hardcoded secret",
+                confidence=confidence,
+                metadata={
+                    "secret_type": SecretType.HIGH_ENTROPY.value,
+                    "entropy": item['entropy'],
+                    "matched_value": self._mask_secret(item['value']),
+                    "line_content": self._get_line_context(lines, line_number),
+                },
+            )
+            
+            self.add_finding(finding)
+
+    def _is_pattern_match(self, value: str) -> bool:
+        """Check if value matches any existing finding."""
+        for finding in self._findings:
+            if finding.metadata.get("matched_value") == self._mask_secret(value):
+                return True
+        return False
+
