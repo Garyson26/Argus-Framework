@@ -80,3 +80,18 @@ graph TD
 
 ### Prerequisites
 
+- **Python 3.9+**
+- **Docker & Docker Compose** (for persistent storage)
+- **AWS CLI** configured (for cloud scanning)
+
+### Quick Install
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Garyson26/Argus-Framework.git
+cd Argus
+
+# 2. Set up virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
