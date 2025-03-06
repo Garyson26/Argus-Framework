@@ -59,3 +59,42 @@ class TestFinding:
         assert result["commit_hash"] == "abc123def"
 
 
+class TestScanResult:
+    """Tests for ScanResult dataclass."""
+    
+    def test_scan_result_creation(self):
+        """Should create scan result with defaults."""
+        result = ScanResult(
+            scan_type="secret",
+            target="/path/to/repo",
+        )
+        
+        assert result.scan_type == "secret"
+        assert result.target == "/path/to/repo"
+        assert result.status == "completed"
+        assert result.findings == []
+    
+    def test_scan_result_counts(self):
+        """Should count findings by severity."""
+        findings = [
+            Finding("R1", Severity.CRITICAL, "Critical", "desc"),
+            Finding("R2", Severity.CRITICAL, "Critical 2", "desc"),
+            Finding("R3", Severity.HIGH, "High", "desc"),
+            Finding("R4", Severity.MEDIUM, "Medium", "desc"),
+            Finding("R5", Severity.LOW, "Low", "desc"),
+            Finding("R6", Severity.INFO, "Info", "desc"),
+        ]
+        
+        result = ScanResult(
+            scan_type="test",
+            target="test",
+            findings=findings,
+        )
+        
+        assert result.total_findings == 6
+        assert result.critical_count == 2
+        assert result.high_count == 1
+        assert result.medium_count == 1
+        assert result.low_count == 1
+        assert result.info_count == 1
+    
