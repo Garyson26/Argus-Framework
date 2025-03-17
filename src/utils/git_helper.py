@@ -105,3 +105,98 @@ class GitHelper:
                 )
         return self._repo
 
+    def is_git_repo(self) -> bool:
+        """Check if the path is a valid Git repository."""
+        try:
+            _ = self.repo
+            return True
+        except GitError:
+            return False
+
+    def get_commits(
+        self,
+        max_commits: int = 1000,
+        branch: Optional[str] = None,
+    ) -> Generator[Commit, None, None]:
+        """
+        Get commits from the repository.
+        
+        Args:
+            max_commits: Maximum number of commits to retrieve
+            branch: Branch to get commits from (default: current)
+            
+        Yields:
+            Git Commit objects
+        """
+        try:
+            if branch:
+                commits = self.repo.iter_commits(branch, max_count=max_commits)
+            else:
+                commits = self.repo.iter_commits(max_count=max_commits)
+            
+            yield from commits
+        except GitCommandError as e:
+            raise GitError(
+                f"Failed to get commits: {e}",
+                repository=self.path,
+            )
+
+    def get_file_at_commit(
+        self,
+        commit: Commit,
+        file_path: str,
+    ) -> Optional[bytes]:
+        """
+        Get file content at a specific commit.
+        
+        Args:
+            commit: Git Commit object
+            file_path: Relative path to file in repo
+            
+        Returns:
+            File content as bytes, or None if file doesn't exist
+        """
+        try:
+            blob = commit.tree / file_path
+            return blob.data_stream.read()
+        except KeyError:
+            # File doesn't exist at this commit
+            return None
+        except Exception as e:
+            logger.debug(f"Failed to get file {file_path} at commit {commit.hexsha}: {e}")
+            return None
+
+    def get_changed_files(self, commit: Commit) -> list[str]:
+        """
+        Get list of files changed in a commit.
+        
+        Args:
+            commit: Git Commit object
+            
+        Returns:
+            List of changed file paths
+        """
+        changed_files = []
+        
+        try:
+            if commit.parents:
+                # Compare with parent commit
+                parent = commit.parents[0]
+                diff = parent.diff(commit)
+                
+                for change in diff:
+                    if change.a_path:
+                        changed_files.append(change.a_path)
+                    if change.b_path and change.b_path != change.a_path:
+                        changed_files.append(change.b_path)
+            else:
+                # Initial commit - all files are new
+                changed_files = [
+                    item.path for item in commit.tree.traverse()
+                    if item.type == "blob"
+                ]
+        except Exception as e:
+            logger.debug(f"Failed to get changed files for commit {commit.hexsha}: {e}")
+        
+        return changed_files
+
