@@ -482,3 +482,35 @@ class SecretScanner(BaseScanner):
                 return True
         return False
 
+    def _mask_secret(self, secret: str, visible_chars: int = 4) -> str:
+        """Mask a secret value for safe display."""
+        if len(secret) <= visible_chars * 2:
+            return "*" * len(secret)
+        return secret[:visible_chars] + "*" * (len(secret) - visible_chars * 2) + secret[-visible_chars:]
+
+    def _get_line_context(self, lines: list[str], line_number: int, context: int = 0) -> str:
+        """Get line content with optional surrounding context."""
+        if line_number < 1 or line_number > len(lines):
+            return ""
+        
+        if context == 0:
+            return lines[line_number - 1].strip()
+        
+        start = max(0, line_number - 1 - context)
+        end = min(len(lines), line_number + context)
+        
+        return "\n".join(lines[start:end])
+
+    def _log_findings_summary(self) -> None:
+        """Log summary of findings."""
+        if not self._findings:
+            return
+        
+        # Group by secret type
+        by_type = {}
+        for finding in self._findings:
+            secret_type = finding.metadata.get("secret_type", "unknown")
+            by_type[secret_type] = by_type.get(secret_type, 0) + 1
+        
+        self._debug_log(f"Findings by type: {by_type}")
+        self._debug_log(f"Stats: {self._stats}")
