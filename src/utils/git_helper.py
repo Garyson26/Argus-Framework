@@ -200,3 +200,51 @@ class GitHelper:
         
         return changed_files
 
+    def get_all_files(self, commit: Optional[Commit] = None) -> Generator[tuple[str, bytes], None, None]:
+        """
+        Get all files in the repository at a specific commit.
+        
+        Args:
+            commit: Commit to get files from (default: HEAD)
+            
+        Yields:
+            Tuples of (file_path, content)
+        """
+        if commit is None:
+            commit = self.repo.head.commit
+        
+        try:
+            for item in commit.tree.traverse():
+                if item.type == "blob":
+                    try:
+                        content = item.data_stream.read()
+                        yield item.path, content
+                    except Exception as e:
+                        logger.debug(f"Failed to read file {item.path}: {e}")
+        except Exception as e:
+            raise GitError(
+                f"Failed to traverse repository: {e}",
+                repository=self.path,
+            )
+
+    def get_branches(self) -> list[str]:
+        """Get list of branch names."""
+        return [ref.name for ref in self.repo.refs if ref.name.startswith("origin/")]
+
+    def get_current_branch(self) -> str:
+        """Get current branch name."""
+        try:
+            return self.repo.active_branch.name
+        except TypeError:
+            # Detached HEAD state
+            return self.repo.head.commit.hexsha[:7]
+
+    def cleanup(self) -> None:
+        """Clean up temporary directory if created."""
+        if self._temp_dir and os.path.exists(self._temp_dir):
+            try:
+                shutil.rmtree(self._temp_dir)
+                self._temp_dir = None
+            except Exception as e:
+                logger.warning(f"Failed to cleanup temporary directory: {e}")
+
