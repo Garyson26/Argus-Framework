@@ -248,3 +248,72 @@ class GitHelper:
             except Exception as e:
                 logger.warning(f"Failed to cleanup temporary directory: {e}")
 
+    def __enter__(self) -> "GitHelper":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.cleanup()
+
+    def __del__(self) -> None:
+        self.cleanup()
+
+
+def scan_directory_files(
+    directory: str,
+    extensions: Optional[list[str]] = None,
+    ignore_patterns: Optional[list[str]] = None,
+) -> Generator[tuple[str, bytes], None, None]:
+    """
+    Scan a directory for files (non-Git approach).
+    
+    Args:
+        directory: Directory path to scan
+        extensions: File extensions to include (e.g., ['.py', '.js'])
+        ignore_patterns: Patterns to ignore (e.g., ['node_modules', '.git'])
+        
+    Yields:
+        Tuples of (file_path, content)
+    """
+    ignore_patterns = ignore_patterns or [
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".tox",
+        "dist",
+        "build",
+        "*.pyc",
+        "*.pyo",
+        "*.so",
+        "*.dylib",
+    ]
+    
+    root_path = Path(directory)
+    
+    for file_path in root_path.rglob("*"):
+        # Skip directories
+        if file_path.is_dir():
+            continue
+        
+        # Check ignore patterns
+        relative_path = str(file_path.relative_to(root_path))
+        should_ignore = any(
+            pattern in relative_path or file_path.match(pattern)
+            for pattern in ignore_patterns
+        )
+        
+        if should_ignore:
+            continue
+        
+        # Check extensions if specified
+        if extensions:
+            if file_path.suffix.lower() not in extensions:
+                continue
+        
+        # Try to read file
+        try:
+            content = file_path.read_bytes()
+            yield relative_path, content
+        except (IOError, OSError) as e:
+            logger.debug(f"Failed to read file {file_path}: {e}")
