@@ -74,3 +74,16 @@ class GitError(ArgusError):
         self.repository = repository
 
 
+class Neo4jError(ArgusError):
+    """Raised when Neo4j operations fail."""
+
+    pass
+
+
+class SecretScanError(ScanError):
+    """Raised when secret scanning fails."""
+
+    def __init__(self, message: str, details: dict | None = None):
+        super().__init__(message, scan_type="secret", details=details)
+
+
