@@ -257,3 +257,51 @@ def cloud_scan(
     _display_scan_results(results, "AWS Cloud Scan", output)
 
 
+# =============================================================================
+# IAC COMMANDS
+# =============================================================================
+
+@iac_app.command("scan")
+def iac_scan(
+    path: Path = typer.Argument(
+        ...,
+        help="Path to IaC files or directory",
+        exists=True,
+    ),
+    framework: Optional[str] = typer.Option(
+        None,
+        "--framework",
+        "-f",
+        help="IaC framework (terraform, cloudformation, serverless, kubernetes). Auto-detected if not specified.",
+    ),
+    skip_checks: Optional[str] = typer.Option(
+        None,
+        "--skip",
+        help="Comma-separated list of check IDs to skip",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output file path for results (JSON format)",
+    ),
+) -> None:
+    """
+    📜 Scan Infrastructure as Code files for security issues.
+    
+    Supports Terraform, CloudFormation, Serverless Framework, and Kubernetes manifests.
+    Uses Checkov as the underlying scanning engine.
+    
+    Examples:
+        argus iac scan ./terraform/
+        argus iac scan ./cloudformation/template.yaml
+        argus iac scan ./k8s/ -f kubernetes
+    """
+    console.print(Panel(
+        f"[bold]Scanning IaC at:[/] {path}\n"
+        f"[bold]Framework:[/] {framework or 'auto-detect'}\n"
+        f"[bold]Skip checks:[/] {skip_checks or 'none'}",
+        title="📜 IaC Scan",
+        border_style="green"
+    ))
+    
