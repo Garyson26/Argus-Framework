@@ -305,3 +305,9 @@ def iac_scan(
         border_style="green"
     ))
     
+    # Parse options
+    skip_list = skip_checks.split(",") if skip_checks else None
+    
+    # Import scanner module
+    from src.scanners.iac.scanner import IaCScanner
+    
