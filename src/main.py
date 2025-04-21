@@ -311,3 +311,19 @@ def iac_scan(
     # Import scanner module
     from src.scanners.iac.scanner import IaCScanner
     
+    scanner = IaCScanner(
+        framework=framework,
+        skip_checks=skip_list,
+    )
+    
+    # Run scan
+    results = asyncio.run(scanner.scan(str(path)))
+    
+    # Display results summary
+    _display_scan_results(results, "IaC Scan", output)
+
+
+# =============================================================================
+# IAM COMMANDS
+# =============================================================================
+
