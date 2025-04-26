@@ -58,3 +58,15 @@ dependencies = [
     # Git Operations
     "gitpython>=3.1.62",
     
+    # Secret Detection
+    "python-magic>=0.4.27",
+    
+    # IaC Scanning (Checkov)
+    "checkov>=3.3.16",
+    
+    # YAML/JSON Parsing
+    "pyyaml>=6.0.3",
+    
+    # HTTP Requests
+    "httpx>=0.28.1",
+    
