@@ -153,3 +153,56 @@ class RulesEngine:
         self._rules: list[CustomRule] = []
         self._loaded = False
     
+    @property
+    def rules(self) -> list[CustomRule]:
+        """Get all loaded rules."""
+        if not self._loaded:
+            self.load_rules()
+        return self._rules
+    
+    def load_rules(self) -> None:
+        """Load all rules from configured sources."""
+        self._rules.clear()
+        
+        # Load from directory
+        if self.rules_dir and self.rules_dir.exists():
+            for yaml_file in self.rules_dir.glob("**/*.yaml"):
+                self._load_file(yaml_file)
+            for yml_file in self.rules_dir.glob("**/*.yml"):
+                self._load_file(yml_file)
+        
+        # Load specific files
+        for file_path in self.rules_files:
+            path = Path(file_path)
+            if path.exists():
+                self._load_file(path)
+        
+        self._loaded = True
+        logger.info(f"Loaded {len(self._rules)} custom rules")
+    
+    def _load_file(self, path: Path) -> None:
+        """
+        Load rules from a YAML file.
+        
+        Args:
+            path: Path to YAML file
+        """
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+            
+            if not data:
+                return
+            
+            rules_data = data.get("rules", [])
+            
+            for rule_data in rules_data:
+                rule = self._parse_rule(rule_data)
+                if rule:
+                    self._rules.append(rule)
+                    
+        except yaml.YAMLError as e:
+            logger.warning(f"Failed to parse YAML file {path}: {e}")
+        except Exception as e:
+            logger.warning(f"Failed to load rules from {path}: {e}")
+    
