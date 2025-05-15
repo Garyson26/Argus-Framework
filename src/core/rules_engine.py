@@ -206,3 +206,79 @@ class RulesEngine:
         except Exception as e:
             logger.warning(f"Failed to load rules from {path}: {e}")
     
+    def _parse_rule(self, data: dict) -> Optional[CustomRule]:
+        """
+        Parse rule data into a CustomRule object.
+        
+        Args:
+            data: Rule data dictionary
+            
+        Returns:
+            CustomRule object or None if invalid
+        """
+        try:
+            # Required fields
+            rule_id = data.get("id")
+            name = data.get("name")
+            pattern = data.get("pattern")
+            severity_str = data.get("severity", "medium").lower()
+            
+            if not all([rule_id, name, pattern]):
+                logger.warning(f"Rule missing required fields: {data}")
+                return None
+            
+            # Parse severity
+            severity_map = {
+                "critical": Severity.CRITICAL,
+                "high": Severity.HIGH,
+                "medium": Severity.MEDIUM,
+                "low": Severity.LOW,
+                "info": Severity.INFO,
+            }
+            severity = severity_map.get(severity_str, Severity.MEDIUM)
+            
+            return CustomRule(
+                id=rule_id,
+                name=name,
+                pattern=pattern,
+                severity=severity,
+                description=data.get("description", ""),
+                suggestion=data.get("suggestion", "Review this finding"),
+                file_patterns=data.get("file_patterns", ["*"]),
+                exclude_patterns=data.get("exclude_patterns", []),
+                confidence=data.get("confidence", 0.9),
+                keywords=data.get("keywords", []),
+                enabled=data.get("enabled", True),
+                metadata=data.get("metadata", {}),
+            )
+            
+        except Exception as e:
+            logger.warning(f"Failed to parse rule: {e}")
+            return None
+    
+    def add_rule(self, rule: CustomRule) -> None:
+        """Add a rule to the engine."""
+        self._rules.append(rule)
+    
+    def get_rules_for_file(self, file_path: str) -> list[CustomRule]:
+        """
+        Get rules applicable to a specific file.
+        
+        Args:
+            file_path: File path to check
+            
+        Returns:
+            List of applicable rules
+        """
+        return [
+            rule for rule in self.rules
+            if rule.enabled and rule.matches_file(file_path)
+        ]
+    
+    def get_rules_by_severity(self, severity: Severity) -> list[CustomRule]:
+        """Get rules with a specific severity."""
+        return [
+            rule for rule in self.rules
+            if rule.enabled and rule.severity == severity
+        ]
+    
