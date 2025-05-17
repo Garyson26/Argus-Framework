@@ -282,3 +282,27 @@ class RulesEngine:
             if rule.enabled and rule.severity == severity
         ]
     
+    def get_rule_by_id(self, rule_id: str) -> Optional[CustomRule]:
+        """Get a rule by its ID."""
+        for rule in self.rules:
+            if rule.id == rule_id:
+                return rule
+        return None
+    
+    def disable_rule(self, rule_id: str) -> bool:
+        """Disable a rule by ID."""
+        rule = self.get_rule_by_id(rule_id)
+        if rule:
+            rule.enabled = False
+            return True
+        return False
+    
+    def enable_rule(self, rule_id: str) -> bool:
+        """Enable a rule by ID."""
+        rule = self.get_rule_by_id(rule_id)
+        if rule:
+            rule.enabled = True
+            return True
+        return False
+
+
