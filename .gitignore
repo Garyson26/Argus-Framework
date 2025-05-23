@@ -24,3 +24,19 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Scan output
+*_report_*.json
+*_report_*.html
+*_report_*.md
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
