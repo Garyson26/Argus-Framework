@@ -306,3 +306,32 @@ class RulesEngine:
         return False
 
 
+# Default rules engine instance
+_default_engine: Optional[RulesEngine] = None
+
+
+def get_rules_engine() -> RulesEngine:
+    """Get the default rules engine instance."""
+    global _default_engine
+    if _default_engine is None:
+        # Default to project rules directory
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent.parent
+        rules_dir = project_root / "rules"
+        _default_engine = RulesEngine(rules_dir=str(rules_dir))
+    return _default_engine
+
+
+def load_rules_from_file(path: str) -> list[CustomRule]:
+    """
+    Load rules from a single YAML file.
+    
+    Args:
+        path: Path to YAML file
+        
+    Returns:
+        List of loaded rules
+    """
+    engine = RulesEngine(rules_files=[path])
+    engine.load_rules()
+    return engine.rules
