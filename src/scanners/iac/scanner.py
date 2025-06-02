@@ -32,3 +32,23 @@ class IaCScanner(BaseScanner):
     - Kubernetes manifests (.yaml, .yml)
     """
     
+    scanner_type = "iac"
+    
+    # Framework detection patterns
+    FRAMEWORK_PATTERNS = {
+        "terraform": [".tf", ".tf.json", ".tfvars"],
+        "cloudformation": [".template", ".template.json", ".template.yaml"],
+        "serverless": ["serverless.yml", "serverless.yaml"],
+        "kubernetes": [],  # Detected by content
+    }
+    
+    # Severity mapping from Checkov
+    SEVERITY_MAP = {
+        "CRITICAL": Severity.CRITICAL,
+        "HIGH": Severity.HIGH,
+        "MEDIUM": Severity.MEDIUM,
+        "LOW": Severity.LOW,
+        "INFO": Severity.INFO,
+        "UNKNOWN": Severity.MEDIUM,
+    }
+    
