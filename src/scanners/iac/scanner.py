@@ -136,3 +136,49 @@ class IaCScanner(BaseScanner):
             self._scan_logger.error(f"Scan failed: {e}", e)
             raise IaCScanError(f"IaC scan failed: {e}")
 
+    def _debug_log(self, message: str) -> None:
+        """Log debug message if debug mode enabled."""
+        if self.debug:
+            logger.debug(f"[IAC SCAN] {message}")
+
+    def _detect_framework(self, path: Path) -> str:
+        """Detect IaC framework from file contents."""
+        if path.is_file():
+            file_name = path.name.lower()
+            
+            # Check by filename
+            if file_name in ("serverless.yml", "serverless.yaml"):
+                return "serverless"
+            
+            # Check by extension
+            for framework, extensions in self.FRAMEWORK_PATTERNS.items():
+                if any(file_name.endswith(ext) for ext in extensions):
+                    return framework
+            
+            # Check content for Kubernetes
+            try:
+                content = path.read_text()
+                if "apiVersion:" in content and "kind:" in content:
+                    return "kubernetes"
+            except Exception:
+                pass
+            
+            return "terraform"  # Default
+        
+        # Directory - check for common patterns
+        files = list(path.rglob("*"))
+        
+        tf_files = [f for f in files if f.suffix == ".tf"]
+        if tf_files:
+            return "terraform"
+        
+        serverless_files = [f for f in files if f.name.lower() in ("serverless.yml", "serverless.yaml")]
+        if serverless_files:
+            return "serverless"
+        
+        cfn_files = [f for f in files if "cloudformation" in str(f).lower() or f.suffix == ".template"]
+        if cfn_files:
+            return "cloudformation"
+        
+        return "terraform"  # Default
+
