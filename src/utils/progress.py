@@ -122,3 +122,95 @@ class ScanProgress:
         self._tasks[name] = task_id
         return task_id
 
+    def update(
+        self,
+        name: str,
+        advance: int = 1,
+        description: Optional[str] = None,
+        total: Optional[int] = None,
+    ) -> None:
+        """
+        Update task progress.
+        
+        Args:
+            name: Task identifier
+            advance: Number of items completed
+            description: Update description text
+            total: Update total count
+        """
+        if name not in self._tasks:
+            return
+            
+        task_id = self._tasks[name]
+        update_kwargs: dict[str, Any] = {"advance": advance}
+        
+        if description:
+            update_kwargs["description"] = description
+        if total is not None:
+            update_kwargs["total"] = total
+            
+        self._progress.update(task_id, **update_kwargs)
+
+    def complete_task(self, name: str) -> None:
+        """Mark a task as complete."""
+        if name in self._tasks:
+            task_id = self._tasks[name]
+            self._progress.update(task_id, completed=True)
+
+    def add_finding(self, severity: str) -> None:
+        """
+        Increment finding counter by severity.
+        
+        Args:
+            severity: Finding severity level
+        """
+        severity_lower = severity.lower()
+        if severity_lower == "critical":
+            self._critical_count += 1
+        elif severity_lower == "high":
+            self._high_count += 1
+        elif severity_lower == "medium":
+            self._medium_count += 1
+        elif severity_lower == "low":
+            self._low_count += 1
+        else:
+            self._info_count += 1
+
+    def get_summary_table(self) -> Table:
+        """Create a summary table of findings by severity."""
+        table = Table(title="Scan Summary", show_header=True)
+        table.add_column("Severity", style="bold")
+        table.add_column("Count", justify="right")
+        
+        if self._critical_count:
+            table.add_row("[red]Critical[/red]", str(self._critical_count))
+        if self._high_count:
+            table.add_row("[orange1]High[/orange1]", str(self._high_count))
+        if self._medium_count:
+            table.add_row("[yellow]Medium[/yellow]", str(self._medium_count))
+        if self._low_count:
+            table.add_row("[blue]Low[/blue]", str(self._low_count))
+        if self._info_count:
+            table.add_row("[dim]Info[/dim]", str(self._info_count))
+            
+        total = (
+            self._critical_count + self._high_count + 
+            self._medium_count + self._low_count + self._info_count
+        )
+        table.add_row("[bold]Total[/bold]", f"[bold]{total}[/bold]")
+        
+        return table
+
+    def print_summary(self) -> None:
+        """Print the findings summary table."""
+        console.print(self.get_summary_table())
+
+
+@contextmanager
+def scan_progress(
+    description: str = "Scanning",
+    total: Optional[int] = None,
+) -> Generator[ScanProgress, None, None]:
+    """
+    Context manager for simple progress tracking.
+    
