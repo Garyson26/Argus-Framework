@@ -327,3 +327,39 @@ def iac_scan(
 # IAM COMMANDS
 # =============================================================================
 
+@iam_app.command("analyze")
+def iam_analyze(
+    profile: Optional[str] = typer.Argument(
+        None,
+        help="AWS profile name (uses default if not specified)",
+    ),
+    check_escalation: bool = typer.Option(
+        True,
+        "--escalation/--no-escalation",
+        help="Check for privilege escalation paths",
+    ),
+    check_unused: bool = typer.Option(
+        True,
+        "--unused/--no-unused",
+        help="Check for unused permissions (requires CloudTrail)",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output file path for results (JSON format)",
+    ),
+) -> None:
+    """
+    👤 Analyze AWS IAM permissions for security issues.
+    
+    Uses graph analysis (Neo4j) to identify privilege escalation paths,
+    overly permissive policies, and unused permissions.
+    
+    Examples:
+        argus iam analyze
+        argus iam analyze my-profile
+        argus iam analyze --no-unused -o report.json
+    """
+    profile_display = profile or "default"
+    
