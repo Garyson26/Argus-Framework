@@ -363,3 +363,11 @@ def iam_analyze(
     """
     profile_display = profile or "default"
     
+    console.print(Panel(
+        f"[bold]AWS Profile:[/] {profile_display}\n"
+        f"[bold]Escalation check:[/] {check_escalation}\n"
+        f"[bold]Unused permissions:[/] {check_unused}",
+        title="👤 IAM Analysis",
+        border_style="magenta"
+    ))
+    
