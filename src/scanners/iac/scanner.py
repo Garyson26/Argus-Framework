@@ -39,7 +39,7 @@ class IaCScanner(BaseScanner):
         "terraform": [".tf", ".tf.json", ".tfvars"],
         "cloudformation": [".template", ".template.json", ".template.yaml"],
         "serverless": ["serverless.yml", "serverless.yaml"],
-        "kubernetes": [],  # Detected by content
+        "kubernetes": [".yaml", ".yml"],  # TODO content sniffing is flaky, extensions for now
     }
     
     # Severity mapping from Checkov
