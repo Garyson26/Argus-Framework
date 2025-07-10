@@ -40,6 +40,7 @@ class IaCScanner(BaseScanner):
         "cloudformation": [".template", ".template.json", ".template.yaml"],
         "serverless": ["serverless.yml", "serverless.yaml"],
         "kubernetes": [".yaml", ".yml"],  # TODO content sniffing is flaky, extensions for now
+        "helm": ["Chart.yaml"],
     }
     
     # Severity mapping from Checkov
