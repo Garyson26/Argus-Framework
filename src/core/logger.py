@@ -144,3 +144,15 @@ class ScanLogger:
         self.logger.warning(message)
         console.print(f"[warning]⚠️ Warning: {message}[/]")
 
+    def info(self, message: str) -> None:
+        """Log an info message."""
+        self.logger.info(message)
+
+    def debug(self, message: str) -> None:
+        """Log a debug message."""
+        self.logger.debug(message)
+
+    def progress(self, current: int, total: int, message: str = "") -> None:
+        """Log progress update."""
+        percent = (current / total * 100) if total > 0 else 0
+        console.print(f"[dim]📊 Progress: {current}/{total} ({percent:.1f}%) {message}[/]")
