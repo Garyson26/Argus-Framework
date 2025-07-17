@@ -110,3 +110,49 @@ class ScanLogger:
             f"[scan.start]🔍 Starting {self.scan_type.upper()} scan on: {self.target}[/]"
         )
 
+    def end(self, findings_count: int) -> None:
+        """Log scan completion."""
+        if findings_count == 0:
+            console.print(f"[success]✅ {self.scan_type.upper()} scan completed - No issues found![/]")
+        else:
+            console.print(
+                f"[scan.end]📋 {self.scan_type.upper()} scan completed - "
+                f"Found {findings_count} issue(s)[/]"
+            )
+
+    def finding(self, severity: str, title: str, resource: Optional[str] = None) -> None:
+        """Log a finding."""
+        severity_lower = severity.lower()
+        icon = {
+            "critical": "🚨",
+            "high": "⚠️",
+            "medium": "⚡",
+            "low": "📝",
+            "info": "ℹ️",
+        }.get(severity_lower, "📌")
+        
+        resource_text = f" ({resource})" if resource else ""
+        console.print(f"[finding.{severity_lower}]{icon} [{severity.upper()}] {title}{resource_text}[/]")
+
+    def error(self, message: str, exception: Optional[Exception] = None) -> None:
+        """Log an error."""
+        self.logger.error(message, exc_info=exception is not None)
+        console.print(f"[error]❌ Error: {message}[/]")
+
+    def warning(self, message: str) -> None:
+        """Log a warning."""
+        self.logger.warning(message)
+        console.print(f"[warning]⚠️ Warning: {message}[/]")
+
+    def info(self, message: str) -> None:
+        """Log an info message."""
+        self.logger.info(message)
+
+    def debug(self, message: str) -> None:
+        """Log a debug message."""
+        self.logger.debug(message)
+
+    def progress(self, current: int, total: int, message: str = "") -> None:
+        """Log progress update."""
+        percent = (current / total * 100) if total > 0 else 0
+        console.print(f"[dim]📊 Progress: {current}/{total} ({percent:.1f}%) {message}[/]")
