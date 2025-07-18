@@ -88,3 +88,12 @@ dev = [
     "moto>=5.1.22",  # AWS mocking
 ]
 
+[project.scripts]
+argus = "src.main:app"
+
+[project.urls]
+Homepage = "https://github.com/Garyson26/Argus-Framework"
+Documentation = "https://github.com/Garyson26/Argus-Framework#readme"
+Repository = "https://github.com/Garyson26/Argus-Framework"
+Issues = "https://github.com/Garyson26/Argus-Framework/issues"
+
