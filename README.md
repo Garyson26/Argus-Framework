@@ -95,3 +95,15 @@ cd Argus
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
+# 3. Install dependencies
+pip install -e ".[dev]"
+
+# 4. Start database services
+docker-compose up -d postgres redis neo4j
+
+# 5. Initialize database
+argus init-db
+```
+
+---
+
