@@ -368,3 +368,41 @@ class AWSCloudScanner(BaseScanner):
         except Exception as e:
             self._debug_log(f"Error checking public access for {bucket_name}: {e}")
 
+    async def _check_s3_encryption(self, s3, bucket_name: str) -> None:
+        """Check if S3 bucket has encryption enabled."""
+        try:
+            s3.get_bucket_encryption(Bucket=bucket_name)
+        except s3.exceptions.ClientError as e:
+            if "ServerSideEncryptionConfigurationNotFoundError" in str(e):
+                self.add_finding(Finding(
+                    rule_id="S3-NO-ENCRYPTION",
+                    severity=Severity.MEDIUM,
+                    title="S3 Bucket Without Default Encryption",
+                    description=f"Bucket {bucket_name} does not have default encryption enabled",
+                    resource_id=bucket_name,
+                    resource_type="AWS::S3::Bucket",
+                    resource_arn=f"arn:aws:s3:::{bucket_name}",
+                    suggestion="Enable default encryption using SSE-S3 or SSE-KMS",
+                ))
+                self._scan_logger.finding("medium", "S3 No Encryption", bucket_name)
+
+    async def _check_s3_versioning(self, s3, bucket_name: str) -> None:
+        """Check if S3 bucket has versioning enabled."""
+        try:
+            versioning = s3.get_bucket_versioning(Bucket=bucket_name)
+            status = versioning.get("Status", "Disabled")
+            
+            if status != "Enabled":
+                self.add_finding(Finding(
+                    rule_id="S3-NO-VERSIONING",
+                    severity=Severity.LOW,
+                    title="S3 Bucket Versioning Not Enabled",
+                    description=f"Bucket {bucket_name} does not have versioning enabled",
+                    resource_id=bucket_name,
+                    resource_type="AWS::S3::Bucket",
+                    resource_arn=f"arn:aws:s3:::{bucket_name}",
+                    suggestion="Enable versioning for data protection and recovery",
+                ))
+        except Exception as e:
+            self._debug_log(f"Error checking versioning for {bucket_name}: {e}")
+
