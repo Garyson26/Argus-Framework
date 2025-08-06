@@ -406,3 +406,22 @@ class AWSCloudScanner(BaseScanner):
         except Exception as e:
             self._debug_log(f"Error checking versioning for {bucket_name}: {e}")
 
+    async def _check_s3_logging(self, s3, bucket_name: str) -> None:
+        """Check if S3 bucket has access logging enabled."""
+        try:
+            logging_config = s3.get_bucket_logging(Bucket=bucket_name)
+            
+            if not logging_config.get("LoggingEnabled"):
+                self.add_finding(Finding(
+                    rule_id="S3-NO-LOGGING",
+                    severity=Severity.LOW,
+                    title="S3 Bucket Access Logging Not Enabled",
+                    description=f"Bucket {bucket_name} does not have access logging enabled",
+                    resource_id=bucket_name,
+                    resource_type="AWS::S3::Bucket",
+                    resource_arn=f"arn:aws:s3:::{bucket_name}",
+                    suggestion="Enable access logging for audit and security monitoring",
+                ))
+        except Exception as e:
+            self._debug_log(f"Error checking logging for {bucket_name}: {e}")
+
