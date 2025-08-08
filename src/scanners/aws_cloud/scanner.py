@@ -425,3 +425,63 @@ class AWSCloudScanner(BaseScanner):
         except Exception as e:
             self._debug_log(f"Error checking logging for {bucket_name}: {e}")
 
+    # =========================================================================
+    # EC2 SCANNING
+    # =========================================================================
+    
+    async def _scan_ec2_region(self, region: str) -> None:
+        """Scan EC2 resources in a single region."""
+        ec2 = self.aws.get_client("ec2", region=region)
+        
+        # Check security groups
+        await self._check_security_groups(ec2, region)
+        
+        # Check EBS volumes
+        await self._check_ebs_encryption(ec2, region)
+
+    async def _check_security_groups(self, ec2, region: str) -> None:
+        """Check security groups for overly permissive rules."""
+        try:
+            sgs = ec2.describe_security_groups()["SecurityGroups"]
+            
+            for sg in sgs:
+                self._stats["resources_scanned"] += 1
+                sg_id = sg["GroupId"]
+                sg_name = sg.get("GroupName", "Unknown")
+                
+                # Check inbound rules
+                for rule in sg.get("IpPermissions", []):
+                    for ip_range in rule.get("IpRanges", []):
+                        cidr = ip_range.get("CidrIp", "")
+                        
+                        if cidr == "0.0.0.0/0":
+                            port_info = self._get_port_info(rule)
+                            
+                            # Critical if SSH/RDP open to world
+                            if port_info.get("from_port") in (22, 3389):
+                                self.add_finding(Finding(
+                                    rule_id="EC2-SG-OPEN-SENSITIVE-PORT",
+                                    severity=Severity.CRITICAL,
+                                    title="Security Group Open to World on Sensitive Port",
+                                    description=f"Security group {sg_name} ({sg_id}) allows inbound traffic from 0.0.0.0/0 on port {port_info.get('from_port')}",
+                                    resource_id=sg_id,
+                                    resource_type="AWS::EC2::SecurityGroup",
+                                    suggestion="Restrict access to specific IP addresses or CIDR blocks",
+                                    metadata={"region": region, "port": port_info},
+                                ))
+                                self._scan_logger.finding("critical", "Open Sensitive Port", sg_id)
+                            else:
+                                self.add_finding(Finding(
+                                    rule_id="EC2-SG-OPEN-TO-WORLD",
+                                    severity=Severity.MEDIUM,
+                                    title="Security Group Open to World",
+                                    description=f"Security group {sg_name} ({sg_id}) allows inbound traffic from 0.0.0.0/0",
+                                    resource_id=sg_id,
+                                    resource_type="AWS::EC2::SecurityGroup",
+                                    suggestion="Restrict access to specific IP addresses or CIDR blocks",
+                                    metadata={"region": region, "port": port_info},
+                                ))
+                                
+        except Exception as e:
+            self._debug_log(f"Error checking security groups in {region}: {e}")
+
