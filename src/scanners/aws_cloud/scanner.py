@@ -485,3 +485,11 @@ class AWSCloudScanner(BaseScanner):
         except Exception as e:
             self._debug_log(f"Error checking security groups in {region}: {e}")
 
+    def _get_port_info(self, rule: dict) -> dict:
+        """Extract port information from security group rule."""
+        return {
+            "protocol": rule.get("IpProtocol", "all"),
+            "from_port": rule.get("FromPort", 0),
+            "to_port": rule.get("ToPort", 65535),
+        }
+
