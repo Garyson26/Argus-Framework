@@ -493,3 +493,32 @@ class AWSCloudScanner(BaseScanner):
             "to_port": rule.get("ToPort", 65535),
         }
 
+    async def _check_ebs_encryption(self, ec2, region: str) -> None:
+        """Check EBS volumes for encryption."""
+        try:
+            volumes = ec2.describe_volumes()["Volumes"]
+            
+            for volume in volumes:
+                self._stats["resources_scanned"] += 1
+                
+                if not volume.get("Encrypted", False):
+                    self.add_finding(Finding(
+                        rule_id="EC2-EBS-NOT-ENCRYPTED",
+                        severity=Severity.MEDIUM,
+                        title="EBS Volume Not Encrypted",
+                        description=f"EBS volume {volume['VolumeId']} is not encrypted",
+                        resource_id=volume["VolumeId"],
+                        resource_type="AWS::EC2::Volume",
+                        suggestion="Enable encryption for EBS volumes to protect data at rest",
+                        metadata={"region": region, "size": volume.get("Size")},
+                    ))
+        except Exception as e:
+            self._debug_log(f"Error checking EBS volumes in {region}: {e}")
+
+    async def _add_finding_async(self, finding: Finding) -> None:
+        """Thread-safe finding addition."""
+        async with self._lock:
+            self.add_finding(finding)
+            if self._progress:
+                self._progress.add_finding(finding.severity.value)
+
