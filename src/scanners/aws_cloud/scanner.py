@@ -522,3 +522,65 @@ class AWSCloudScanner(BaseScanner):
             if self._progress:
                 self._progress.add_finding(finding.severity.value)
 
+    # =========================================================================
+    # IAM SCANNING
+    # =========================================================================
+    
+    async def _scan_iam(self) -> None:
+        """Scan IAM for misconfigurations."""
+        self._debug_log("Scanning IAM...")
+        
+        iam = self.aws.get_client("iam")
+        
+        # Check password policy
+        await self._check_password_policy(iam)
+        
+        # Check users
+        await self._check_iam_users(iam)
+
+    async def _check_password_policy(self, iam) -> None:
+        """Check IAM password policy."""
+        try:
+            policy = iam.get_account_password_policy()["PasswordPolicy"]
+            
+            issues = []
+            
+            if policy.get("MinimumPasswordLength", 0) < 14:
+                issues.append("Minimum password length should be at least 14 characters")
+            
+            if not policy.get("RequireSymbols", False):
+                issues.append("Password policy should require symbols")
+            
+            if not policy.get("RequireNumbers", False):
+                issues.append("Password policy should require numbers")
+            
+            if not policy.get("RequireUppercaseCharacters", False):
+                issues.append("Password policy should require uppercase characters")
+            
+            if not policy.get("RequireLowercaseCharacters", False):
+                issues.append("Password policy should require lowercase characters")
+            
+            if issues:
+                self.add_finding(Finding(
+                    rule_id="IAM-WEAK-PASSWORD-POLICY",
+                    severity=Severity.MEDIUM,
+                    title="IAM Password Policy Not Strong Enough",
+                    description="The account password policy does not meet security best practices",
+                    resource_id="AccountPasswordPolicy",
+                    resource_type="AWS::IAM::AccountPasswordPolicy",
+                    suggestion="; ".join(issues),
+                ))
+                self._scan_logger.finding("medium", "Weak Password Policy", "Account")
+                
+        except iam.exceptions.NoSuchEntityException:
+            self.add_finding(Finding(
+                rule_id="IAM-NO-PASSWORD-POLICY",
+                severity=Severity.HIGH,
+                title="No IAM Password Policy Configured",
+                description="The account has no password policy configured",
+                resource_id="AccountPasswordPolicy",
+                resource_type="AWS::IAM::AccountPasswordPolicy",
+                suggestion="Configure a strong password policy for the account",
+            ))
+            self._scan_logger.finding("high", "No Password Policy", "Account")
+
