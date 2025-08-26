@@ -584,3 +584,56 @@ class AWSCloudScanner(BaseScanner):
             ))
             self._scan_logger.finding("high", "No Password Policy", "Account")
 
+    async def _check_iam_users(self, iam) -> None:
+        """Check IAM users for security issues."""
+        try:
+            users = list(self.aws.paginate(iam, "list_users", "Users"))
+            
+            for user in users:
+                self._stats["resources_scanned"] += 1
+                username = user["UserName"]
+                
+                # Check MFA
+                mfa_devices = iam.list_mfa_devices(UserName=username)["MFADevices"]
+                
+                if not mfa_devices:
+                    # Check if user has console access
+                    try:
+                        iam.get_login_profile(UserName=username)
+                        # User has console access but no MFA
+                        self.add_finding(Finding(
+                            rule_id="IAM-USER-NO-MFA",
+                            severity=Severity.HIGH,
+                            title="IAM User Without MFA",
+                            description=f"IAM user {username} has console access but no MFA enabled",
+                            resource_id=username,
+                            resource_type="AWS::IAM::User",
+                            resource_arn=user["Arn"],
+                            suggestion="Enable MFA for all IAM users with console access",
+                        ))
+                        self._scan_logger.finding("high", "User No MFA", username)
+                    except iam.exceptions.NoSuchEntityException:
+                        pass  # User has no console access
+                
+                # Check access key age
+                access_keys = iam.list_access_keys(UserName=username)["AccessKeyMetadata"]
+                
+                for key in access_keys:
+                    if key["Status"] == "Active":
+                        key_age = datetime.utcnow().replace(tzinfo=None) - key["CreateDate"].replace(tzinfo=None)
+                        
+                        if key_age > timedelta(days=90):
+                            self.add_finding(Finding(
+                                rule_id="IAM-ACCESS-KEY-OLD",
+                                severity=Severity.MEDIUM,
+                                title="IAM Access Key Not Rotated",
+                                description=f"Access key {key['AccessKeyId']} for user {username} is {key_age.days} days old",
+                                resource_id=key["AccessKeyId"],
+                                resource_type="AWS::IAM::AccessKey",
+                                suggestion="Rotate access keys at least every 90 days",
+                                metadata={"age_days": key_age.days},
+                            ))
+                            
+        except Exception as e:
+            self._debug_log(f"Error checking IAM users: {e}")
+
