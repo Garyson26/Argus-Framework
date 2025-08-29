@@ -637,3 +637,78 @@ class AWSCloudScanner(BaseScanner):
         except Exception as e:
             self._debug_log(f"Error checking IAM users: {e}")
 
+    # =========================================================================
+    # RDS SCANNING
+    # =========================================================================
+    
+    async def _scan_rds_region(self, region: str) -> None:
+        """Scan RDS instances in a single region."""
+        rds = self.aws.get_client("rds", region=region)
+        
+        try:
+            instances = rds.describe_db_instances()["DBInstances"]
+            
+            for instance in instances:
+                async with self._lock:
+                    self._stats["resources_scanned"] += 1
+                db_id = instance["DBInstanceIdentifier"]
+                
+                # Check public accessibility
+                if instance.get("PubliclyAccessible", False):
+                    self.add_finding(Finding(
+                        rule_id="RDS-PUBLIC-ACCESS",
+                        severity=Severity.CRITICAL,
+                        title="RDS Instance Publicly Accessible",
+                        description=f"RDS instance {db_id} is publicly accessible",
+                        resource_id=db_id,
+                        resource_type="AWS::RDS::DBInstance",
+                        resource_arn=instance.get("DBInstanceArn"),
+                        suggestion="Disable public accessibility unless absolutely necessary",
+                        metadata={"region": region},
+                    ))
+                    self._scan_logger.finding("critical", "RDS Public Access", db_id)
+                
+                # Check encryption
+                if not instance.get("StorageEncrypted", False):
+                    self.add_finding(Finding(
+                        rule_id="RDS-NO-ENCRYPTION",
+                        severity=Severity.HIGH,
+                        title="RDS Instance Not Encrypted",
+                        description=f"RDS instance {db_id} storage is not encrypted",
+                        resource_id=db_id,
+                        resource_type="AWS::RDS::DBInstance",
+                        resource_arn=instance.get("DBInstanceArn"),
+                        suggestion="Enable storage encryption for data protection",
+                        metadata={"region": region},
+                    ))
+                    self._scan_logger.finding("high", "RDS No Encryption", db_id)
+                
+                # Check backup retention
+                retention = instance.get("BackupRetentionPeriod", 0)
+                if retention < 7:
+                    self.add_finding(Finding(
+                        rule_id="RDS-LOW-BACKUP-RETENTION",
+                        severity=Severity.MEDIUM,
+                        title="RDS Instance Low Backup Retention",
+                        description=f"RDS instance {db_id} has backup retention of only {retention} days",
+                        resource_id=db_id,
+                        resource_type="AWS::RDS::DBInstance",
+                        suggestion="Increase backup retention to at least 7 days",
+                        metadata={"region": region, "retention_days": retention},
+                    ))
+                    
+        except Exception as e:
+            self._debug_log(f"Error scanning RDS in {region}: {e}")
+
+    # =========================================================================
+    # LAMBDA SCANNING
+    # =========================================================================
+    
+    # List of outdated runtimes
+    OUTDATED_RUNTIMES = [
+        "python2.7", "python3.6", "python3.7",
+        "nodejs10.x", "nodejs12.x",
+        "ruby2.5",
+        "dotnetcore2.1",
+    ]
+    
