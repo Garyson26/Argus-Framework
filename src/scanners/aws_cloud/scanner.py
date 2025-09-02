@@ -712,3 +712,47 @@ class AWSCloudScanner(BaseScanner):
         "dotnetcore2.1",
     ]
     
+    async def _scan_lambda_region(self, region: str) -> None:
+        """Scan Lambda functions in a single region."""
+        lambda_client = self.aws.get_client("lambda", region=region)
+        
+        try:
+            functions = lambda_client.list_functions()["Functions"]
+            
+            for func in functions:
+                async with self._lock:
+                    self._stats["resources_scanned"] += 1
+                func_name = func["FunctionName"]
+                
+                # Check for outdated runtime
+                runtime = func.get("Runtime", "")
+                if runtime in self.OUTDATED_RUNTIMES:
+                    self.add_finding(Finding(
+                        rule_id="LAMBDA-OUTDATED-RUNTIME",
+                        severity=Severity.MEDIUM,
+                        title="Lambda Function Using Outdated Runtime",
+                        description=f"Function {func_name} uses outdated runtime: {runtime}",
+                        resource_id=func_name,
+                        resource_type="AWS::Lambda::Function",
+                        resource_arn=func["FunctionArn"],
+                        suggestion="Update to a supported runtime version",
+                        metadata={"region": region, "runtime": runtime},
+                    ))
+                
+                # Check for missing DLQ
+                if not func.get("DeadLetterConfig"):
+                    self.add_finding(Finding(
+                        rule_id="LAMBDA-NO-DLQ",
+                        severity=Severity.LOW,
+                        title="Lambda Function Missing Dead Letter Queue",
+                        description=f"Function {func_name} has no DLQ configured",
+                        resource_id=func_name,
+                        resource_type="AWS::Lambda::Function",
+                        resource_arn=func["FunctionArn"],
+                        suggestion="Configure a Dead Letter Queue for error handling",
+                        metadata={"region": region},
+                    ))
+                    
+        except Exception as e:
+            self._debug_log(f"Error scanning Lambda in {region}: {e}")
+
