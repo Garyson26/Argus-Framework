@@ -85,3 +85,60 @@ class AWSClient:
                 )
         return self._session
 
+    def _get_assumed_credentials(self) -> dict:
+        """Get credentials from assumed role."""
+        if self._assumed_credentials is None:
+            sts = self.session.client("sts", config=self._config)
+            
+            assume_params = {
+                "RoleArn": self.assume_role_arn,
+                "RoleSessionName": "ArgusSession",
+                "DurationSeconds": 3600,
+            }
+            
+            if self.external_id:
+                assume_params["ExternalId"] = self.external_id
+            
+            try:
+                response = sts.assume_role(**assume_params)
+                self._assumed_credentials = response["Credentials"]
+            except ClientError as e:
+                raise AWSError(
+                    f"Failed to assume role: {e}",
+                    service="sts",
+                    operation="assume_role",
+                    details={"role_arn": self.assume_role_arn},
+                )
+        
+        return self._assumed_credentials
+
+    def get_client(self, service_name: str, region: Optional[str] = None) -> Any:
+        """
+        Get a boto3 client for the specified service.
+        
+        Args:
+            service_name: AWS service name (e.g., 's3', 'ec2', 'iam')
+            region: Optional region override
+            
+        Returns:
+            Boto3 service client
+        """
+        region = region or self.region
+        
+        if self.assume_role_arn:
+            creds = self._get_assumed_credentials()
+            return boto3.client(
+                service_name,
+                region_name=region,
+                aws_access_key_id=creds["AccessKeyId"],
+                aws_secret_access_key=creds["SecretAccessKey"],
+                aws_session_token=creds["SessionToken"],
+                config=self._config,
+            )
+        
+        return self.session.client(
+            service_name,
+            region_name=region,
+            config=self._config,
+        )
+
