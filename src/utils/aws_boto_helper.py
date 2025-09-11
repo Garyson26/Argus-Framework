@@ -142,3 +142,65 @@ class AWSClient:
             config=self._config,
         )
 
+    def get_resource(self, service_name: str, region: Optional[str] = None) -> Any:
+        """
+        Get a boto3 resource for the specified service.
+        
+        Args:
+            service_name: AWS service name
+            region: Optional region override
+            
+        Returns:
+            Boto3 service resource
+        """
+        region = region or self.region
+        
+        if self.assume_role_arn:
+            creds = self._get_assumed_credentials()
+            return boto3.resource(
+                service_name,
+                region_name=region,
+                aws_access_key_id=creds["AccessKeyId"],
+                aws_secret_access_key=creds["SecretAccessKey"],
+                aws_session_token=creds["SessionToken"],
+                config=self._config,
+            )
+        
+        return self.session.resource(
+            service_name,
+            region_name=region,
+            config=self._config,
+        )
+
+    def paginate(
+        self,
+        client: Any,
+        operation: str,
+        result_key: str,
+        **kwargs,
+    ) -> Generator[Any, None, None]:
+        """
+        Paginate through AWS API results.
+        
+        Args:
+            client: Boto3 client
+            operation: Operation name (e.g., 'list_buckets')
+            result_key: Key in response containing results
+            **kwargs: Additional arguments for the operation
+            
+        Yields:
+            Individual items from paginated results
+        """
+        paginator = client.get_paginator(operation)
+        
+        try:
+            for page in paginator.paginate(**kwargs):
+                items = page.get(result_key, [])
+                yield from items
+        except ClientError as e:
+            raise AWSError(
+                f"Pagination failed for {operation}: {e}",
+                service=client.meta.service_model.service_name,
+                operation=operation,
+            )
+
