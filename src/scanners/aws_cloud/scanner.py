@@ -756,3 +756,99 @@ class AWSCloudScanner(BaseScanner):
         except Exception as e:
             self._debug_log(f"Error scanning Lambda in {region}: {e}")
 
+    # =========================================================================
+    # VPC SCANNING
+    # =========================================================================
+    
+    async def _scan_vpc_region(self, region: str) -> None:
+        """Scan VPCs in a single region."""
+        ec2 = self.aws.get_client("ec2", region=region)
+        
+        try:
+            vpcs = ec2.describe_vpcs()["Vpcs"]
+            
+            for vpc in vpcs:
+                async with self._lock:
+                    self._stats["resources_scanned"] += 1
+                vpc_id = vpc["VpcId"]
+                
+                # Check VPC Flow Logs
+                flow_logs = ec2.describe_flow_logs(
+                    Filters=[{"Name": "resource-id", "Values": [vpc_id]}]
+                )["FlowLogs"]
+                
+                if not flow_logs:
+                    self.add_finding(Finding(
+                        rule_id="VPC-NO-FLOW-LOGS",
+                        severity=Severity.MEDIUM,
+                        title="VPC Flow Logs Not Enabled",
+                        description=f"VPC {vpc_id} does not have flow logs enabled",
+                        resource_id=vpc_id,
+                        resource_type="AWS::EC2::VPC",
+                        suggestion="Enable VPC Flow Logs for network traffic monitoring",
+                        metadata={"region": region},
+                    ))
+                    self._scan_logger.finding("medium", "VPC No Flow Logs", vpc_id)
+                    
+        except Exception as e:
+            self._debug_log(f"Error scanning VPCs in {region}: {e}")
+
+    # =========================================================================
+    # CLOUDTRAIL SCANNING
+    # =========================================================================
+    
+    async def _scan_cloudtrail(self, regions: list[str]) -> None:
+        """Scan CloudTrail for misconfigurations."""
+        self._debug_log("Scanning CloudTrail...")
+        
+        # CloudTrail is global, just check once
+        cloudtrail = self.aws.get_client("cloudtrail", region=regions[0] if regions else "us-east-1")
+        
+        try:
+            trails = cloudtrail.describe_trails()["trailList"]
+            
+            if not trails:
+                self.add_finding(Finding(
+                    rule_id="CLOUDTRAIL-NOT-ENABLED",
+                    severity=Severity.CRITICAL,
+                    title="CloudTrail Not Enabled",
+                    description="No CloudTrail trails are configured for this account",
+                    resource_id="CloudTrail",
+                    resource_type="AWS::CloudTrail::Trail",
+                    suggestion="Enable CloudTrail for audit logging and compliance",
+                ))
+                self._scan_logger.finding("critical", "CloudTrail Not Enabled", "Account")
+                return
+            
+            for trail in trails:
+                self._stats["resources_scanned"] += 1
+                trail_name = trail["Name"]
+                
+                # Check if trail is multi-region
+                if not trail.get("IsMultiRegionTrail", False):
+                    self.add_finding(Finding(
+                        rule_id="CLOUDTRAIL-NOT-MULTIREGION",
+                        severity=Severity.MEDIUM,
+                        title="CloudTrail Not Multi-Region",
+                        description=f"Trail {trail_name} is not configured for multi-region logging",
+                        resource_id=trail_name,
+                        resource_type="AWS::CloudTrail::Trail",
+                        resource_arn=trail.get("TrailARN"),
+                        suggestion="Enable multi-region logging for comprehensive audit coverage",
+                    ))
+                
+                # Check log file validation
+                if not trail.get("LogFileValidationEnabled", False):
+                    self.add_finding(Finding(
+                        rule_id="CLOUDTRAIL-NO-LOG-VALIDATION",
+                        severity=Severity.MEDIUM,
+                        title="CloudTrail Log File Validation Not Enabled",
+                        description=f"Trail {trail_name} does not have log file validation enabled",
+                        resource_id=trail_name,
+                        resource_type="AWS::CloudTrail::Trail",
+                        resource_arn=trail.get("TrailARN"),
+                        suggestion="Enable log file validation to detect log tampering",
+                    ))
+                    
+        except Exception as e:
+            self._debug_log(f"Error scanning CloudTrail: {e}")
