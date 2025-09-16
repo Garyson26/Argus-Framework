@@ -371,3 +371,19 @@ def iam_analyze(
         border_style="magenta"
     ))
     
+    # Import analyzer module
+    from src.scanners.iam_analyzer.analyzer import IAMAnalyzer
+    
+    analyzer = IAMAnalyzer(
+        profile=profile,
+        check_escalation=check_escalation,
+        check_unused=check_unused,
+    )
+    
+    # Run analysis
+    results = asyncio.run(analyzer.analyze())
+    
+    # Display results summary
+    _display_scan_results(results, "IAM Analysis", output)
+
+
