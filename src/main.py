@@ -387,3 +387,21 @@ def iam_analyze(
     _display_scan_results(results, "IAM Analysis", output)
 
 
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def _display_scan_results(results: dict, scan_name: str, output: Optional[Path]) -> None:
+    """Display scan results in a formatted table."""
+    findings = results.get("findings", [])
+    total = len(findings)
+    
+    # Count by severity
+    severity_counts = {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 0,
+    }
+    
