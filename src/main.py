@@ -371,3 +371,37 @@ def iam_analyze(
         border_style="magenta"
     ))
     
+    # Import analyzer module
+    from src.scanners.iam_analyzer.analyzer import IAMAnalyzer
+    
+    analyzer = IAMAnalyzer(
+        profile=profile,
+        check_escalation=check_escalation,
+        check_unused=check_unused,
+    )
+    
+    # Run analysis
+    results = asyncio.run(analyzer.analyze())
+    
+    # Display results summary
+    _display_scan_results(results, "IAM Analysis", output)
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def _display_scan_results(results: dict, scan_name: str, output: Optional[Path]) -> None:
+    """Display scan results in a formatted table."""
+    findings = results.get("findings", [])
+    total = len(findings)
+    
+    # Count by severity
+    severity_counts = {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 0,
+    }
+    
