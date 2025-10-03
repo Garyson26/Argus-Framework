@@ -230,3 +230,19 @@ class AWSClient:
         return self.session.get_available_regions(service_name)
 
 
+@lru_cache
+def get_aws_client(
+    profile: Optional[str] = None,
+    region: Optional[str] = None,
+) -> AWSClient:
+    """
+    Get a cached AWS client instance.
+    
+    Args:
+        profile: AWS profile name
+        region: AWS region
+        
+    Returns:
+        Cached AWSClient instance
+    """
+    return AWSClient(profile=profile, region=region)
