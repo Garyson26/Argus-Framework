@@ -107,3 +107,11 @@ argus init-db
 
 ---
 
+## ⚡ Quick Start
+
+Get up and running in seconds!
+
+```bash
+# 1. Verify installation
+argus --version
+
