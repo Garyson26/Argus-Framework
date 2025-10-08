@@ -204,3 +204,45 @@ class AWSClient:
                 operation=operation,
             )
 
+    def get_account_id(self) -> str:
+        """Get the current AWS account ID."""
+        sts = self.get_client("sts")
+        try:
+            response = sts.get_caller_identity()
+            return response["Account"]
+        except (ClientError, BotoCoreError) as e:
+            raise AWSError(
+                f"Failed to get account ID: {e}",
+                service="sts",
+                operation="get_caller_identity",
+            )
+
+    def get_available_regions(self, service_name: str = "ec2") -> list[str]:
+        """
+        Get list of available regions for a service.
+        
+        Args:
+            service_name: Service to check regions for
+            
+        Returns:
+            List of region names
+        """
+        return self.session.get_available_regions(service_name)
+
+
+@lru_cache
+def get_aws_client(
+    profile: Optional[str] = None,
+    region: Optional[str] = None,
+) -> AWSClient:
+    """
+    Get a cached AWS client instance.
+    
+    Args:
+        profile: AWS profile name
+        region: AWS region
+        
+    Returns:
+        Cached AWSClient instance
+    """
+    return AWSClient(profile=profile, region=region)
