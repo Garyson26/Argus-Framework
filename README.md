@@ -115,3 +115,15 @@ Get up and running in seconds!
 # 1. Verify installation
 argus --version
 
+# 2. Run a secret scan on a local repo
+argus secret scan ./your-project
+
+# 3. Scan your default AWS profile
+argus cloud scan
+
+# 4. View help for more commands
+argus --help
+```
+
+---
+
