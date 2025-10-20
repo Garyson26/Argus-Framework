@@ -146,3 +146,57 @@ class Finding(Base):
         Enum(FindingStatus), default=FindingStatus.OPEN, nullable=False
     )
     
+    # Finding details
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    suggestion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Resource information
+    resource_id: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    resource_type: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    resource_arn: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    
+    # Location (for code-based findings)
+    file_path: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    line_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    commit_hash: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    
+    # Additional metadata
+    metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    
+    # Confidence score for secret detection
+    confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    
+    # Relationships
+    scan: Mapped["Scan"] = relationship("Scan", back_populates="findings")
+
+    __table_args__ = (
+        Index("idx_findings_scan_id", "scan_id"),
+        Index("idx_findings_severity", "severity"),
+        Index("idx_findings_status", "status"),
+        Index("idx_findings_rule_id", "rule_id"),
+        Index("idx_findings_resource_type", "resource_type"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Finding(id={self.id}, rule={self.rule_id}, severity={self.severity})>"
+
+
+class IAMEntity(Base):
+    """Represents an AWS IAM entity (User, Role, or Group)."""
+
+    __tablename__ = "iam_entities"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    aws_account_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("aws_accounts.id"), nullable=False
+    )
+    
