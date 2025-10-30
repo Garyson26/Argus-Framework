@@ -200,3 +200,49 @@ class IAMEntity(Base):
         Integer, ForeignKey("aws_accounts.id"), nullable=False
     )
     
+    # Entity identification
+    entity_type: Mapped[IAMEntityType] = mapped_column(Enum(IAMEntityType), nullable=False)
+    entity_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    arn: Mapped[str] = mapped_column(String(1000), nullable=False, unique=True)
+    
+    # Entity details
+    path: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    created_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    # Policy information stored as JSONB
+    inline_policies: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    attached_policies: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    
+    # For users: access key info
+    access_keys: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    mfa_enabled: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    password_enabled: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    last_used: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    # For roles: trust policy
+    trust_policy: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    
+    # Group memberships (for users)
+    groups: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    
+    # Neo4j sync tracking
+    neo4j_synced: Mapped[bool] = mapped_column(Boolean, default=False)
+    neo4j_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    
+    # Relationships
+    aws_account: Mapped["AWSAccount"] = relationship("AWSAccount", back_populates="iam_entities")
+
+    __table_args__ = (
+        Index("idx_iam_entities_account_id", "aws_account_id"),
+        Index("idx_iam_entities_type", "entity_type"),
+        Index("idx_iam_entities_name", "entity_name"),
+    )
+
