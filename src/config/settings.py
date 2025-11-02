@@ -79,3 +79,16 @@ class Settings(BaseSettings):
         """Get Celery broker URL."""
         return self.celery_broker_url or self.redis_url
 
+    @property
+    def celery_backend(self) -> str:
+        """Get Celery result backend URL."""
+        return self.celery_result_backend or self.redis_url
+
+    # AWS Configuration
+    aws_profile: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_session_token: Optional[str] = None
+    aws_region: str = "us-east-1"
+    aws_assume_role_arn: Optional[str] = None
+
