@@ -405,3 +405,21 @@ def _display_scan_results(results: dict, scan_name: str, output: Optional[Path])
         "info": 0,
     }
     
+    for finding in findings:
+        severity = finding.get("severity", "info").lower()
+        if severity in severity_counts:
+            severity_counts[severity] += 1
+    
+    # Create summary table
+    table = Table(title=f"📊 {scan_name} Results")
+    table.add_column("Severity", style="bold")
+    table.add_column("Count", justify="right")
+    
+    severity_styles = {
+        "critical": "red bold",
+        "high": "red",
+        "medium": "yellow",
+        "low": "cyan",
+        "info": "dim",
+    }
+    
