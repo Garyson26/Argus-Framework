@@ -246,3 +246,51 @@ class IAMEntity(Base):
         Index("idx_iam_entities_name", "entity_name"),
     )
 
+    def __repr__(self) -> str:
+        return f"<IAMEntity(type={self.entity_type}, name={self.entity_name})>"
+
+
+class AWSAccount(Base):
+    """Represents an AWS account configuration."""
+
+    __tablename__ = "aws_accounts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[str] = mapped_column(String(12), nullable=False, unique=True)
+    account_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    account_alias: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    
+    # Authentication configuration (encrypted in practice)
+    profile_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    assume_role_arn: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    external_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    
+    # Account status
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_scanned_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    # Organization info
+    organization_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    organizational_unit: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    
+    # Relationships
+    scans: Mapped[list["Scan"]] = relationship("Scan", back_populates="aws_account")
+    iam_entities: Mapped[list["IAMEntity"]] = relationship(
+        "IAMEntity", back_populates="aws_account", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("idx_aws_accounts_account_id", "account_id"),
+        Index("idx_aws_accounts_organization", "organization_id"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<AWSAccount(id={self.account_id}, name={self.account_name})>"
