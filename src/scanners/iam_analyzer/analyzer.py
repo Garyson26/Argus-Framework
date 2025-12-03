@@ -132,3 +132,62 @@ class IAMAnalyzer(BaseScanner):
         # Cache for policy documents
         self._policy_cache: dict[str, dict] = {}
 
+    @property
+    def aws(self) -> AWSClient:
+        """Get AWS client."""
+        if self._aws_client is None:
+            self._aws_client = AWSClient(profile=self.profile)
+        return self._aws_client
+
+    async def analyze(self) -> dict[str, Any]:
+        """
+        Analyze IAM permissions.
+        
+        Returns:
+            Dictionary containing analysis results
+        """
+        started_at = datetime.utcnow()
+        self.clear_findings()
+        
+        target = f"AWS IAM (Profile: {self.profile or 'default'})"
+        self._scan_logger = ScanLogger("iam", target)
+        self._scan_logger.start()
+        
+        try:
+            account_id = self.aws.get_account_id()
+            self._debug_log(f"Analyzing IAM for account: {account_id}")
+            
+            iam = self.aws.get_client("iam")
+            
+            # Analyze users
+            await self._analyze_users(iam)
+            
+            # Analyze roles
+            await self._analyze_roles(iam)
+            
+            # Analyze groups
+            await self._analyze_groups(iam)
+            
+            # Check for privilege escalation paths
+            if self.check_escalation:
+                await self._check_escalation_paths(iam)
+            
+            # Create result
+            result = self.create_result(
+                target=target,
+                started_at=started_at,
+                metadata={
+                    "account_id": account_id,
+                    **self._stats,
+                },
+            )
+            
+            self._scan_logger.end(len(self._findings))
+            return result.to_dict()
+            
+        except AWSError:
+            raise
+        except Exception as e:
+            self._scan_logger.error(f"Analysis failed: {e}", e)
+            raise IAMAnalysisError(f"IAM analysis failed: {e}")
+
