@@ -191,3 +191,82 @@ class IAMAnalyzer(BaseScanner):
             self._scan_logger.error(f"Analysis failed: {e}", e)
             raise IAMAnalysisError(f"IAM analysis failed: {e}")
 
+    def _debug_log(self, message: str) -> None:
+        """Log debug message if debug mode enabled."""
+        if self.debug:
+            logger.debug(f"[IAM ANALYZE] {message}")
+
+    async def _analyze_users(self, iam) -> None:
+        """Analyze IAM users."""
+        self._debug_log("Analyzing IAM users...")
+        
+        try:
+            users = list(self.aws.paginate(iam, "list_users", "Users"))
+            
+            for user in users:
+                self._stats["users_analyzed"] += 1
+                username = user["UserName"]
+                user_arn = user["Arn"]
+                
+                # Get user's policies
+                await self._analyze_entity_policies(iam, "user", username, user_arn)
+                
+                # Check inline policies
+                inline_policies = iam.list_user_policies(UserName=username)["PolicyNames"]
+                for policy_name in inline_policies:
+                    policy_doc = iam.get_user_policy(
+                        UserName=username, 
+                        PolicyName=policy_name
+                    )["PolicyDocument"]
+                    
+                    await self._analyze_policy_document(
+                        policy_doc,
+                        f"{username}/{policy_name}",
+                        "inline",
+                        user_arn,
+                    )
+                
+        except Exception as e:
+            self._debug_log(f"Error analyzing users: {e}")
+
+    async def _analyze_roles(self, iam) -> None:
+        """Analyze IAM roles."""
+        self._debug_log("Analyzing IAM roles...")
+        
+        try:
+            roles = list(self.aws.paginate(iam, "list_roles", "Roles"))
+            
+            for role in roles:
+                self._stats["roles_analyzed"] += 1
+                role_name = role["RoleName"]
+                role_arn = role["Arn"]
+                
+                # Skip AWS service-linked roles
+                if role.get("Path", "").startswith("/aws-service-role/"):
+                    continue
+                
+                # Check trust policy
+                trust_policy = role.get("AssumeRolePolicyDocument", {})
+                await self._analyze_trust_policy(trust_policy, role_name, role_arn)
+                
+                # Get role's policies
+                await self._analyze_entity_policies(iam, "role", role_name, role_arn)
+                
+                # Check inline policies
+                inline_policies = iam.list_role_policies(RoleName=role_name)["PolicyNames"]
+                for policy_name in inline_policies:
+                    policy_doc = iam.get_role_policy(
+                        RoleName=role_name, 
+                        PolicyName=policy_name
+                    )["PolicyDocument"]
+                    
+                    await self._analyze_policy_document(
+                        policy_doc,
+                        f"{role_name}/{policy_name}",
+                        "inline",
+                        role_arn,
+                    )
+                
+        except Exception as e:
+            self._debug_log(f"Error analyzing roles: {e}")
+
