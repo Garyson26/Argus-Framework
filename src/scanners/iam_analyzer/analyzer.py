@@ -270,3 +270,54 @@ class IAMAnalyzer(BaseScanner):
         except Exception as e:
             self._debug_log(f"Error analyzing roles: {e}")
 
+    async def _analyze_groups(self, iam) -> None:
+        """Analyze IAM groups."""
+        self._debug_log("Analyzing IAM groups...")
+        
+        try:
+            groups = list(self.aws.paginate(iam, "list_groups", "Groups"))
+            
+            for group in groups:
+                self._stats["groups_analyzed"] += 1
+                group_name = group["GroupName"]
+                group_arn = group["Arn"]
+                
+                # Get group's policies
+                await self._analyze_entity_policies(iam, "group", group_name, group_arn)
+                
+        except Exception as e:
+            self._debug_log(f"Error analyzing groups: {e}")
+
+    async def _analyze_entity_policies(
+        self,
+        iam,
+        entity_type: str,
+        entity_name: str,
+        entity_arn: str,
+    ) -> None:
+        """Analyze attached policies for an IAM entity."""
+        try:
+            # Get attached managed policies
+            if entity_type == "user":
+                attached = iam.list_attached_user_policies(UserName=entity_name)
+            elif entity_type == "role":
+                attached = iam.list_attached_role_policies(RoleName=entity_name)
+            else:
+                attached = iam.list_attached_group_policies(GroupName=entity_name)
+            
+            for policy in attached.get("AttachedPolicies", []):
+                policy_arn = policy["PolicyArn"]
+                
+                # Get policy document
+                policy_doc = await self._get_policy_document(iam, policy_arn)
+                if policy_doc:
+                    await self._analyze_policy_document(
+                        policy_doc,
+                        policy["PolicyName"],
+                        "managed",
+                        entity_arn,
+                    )
+                    
+        except Exception as e:
+            self._debug_log(f"Error analyzing policies for {entity_type} {entity_name}: {e}")
+
