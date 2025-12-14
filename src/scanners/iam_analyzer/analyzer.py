@@ -321,3 +321,111 @@ class IAMAnalyzer(BaseScanner):
         except Exception as e:
             self._debug_log(f"Error analyzing policies for {entity_type} {entity_name}: {e}")
 
+    async def _get_policy_document(self, iam, policy_arn: str) -> Optional[dict]:
+        """Get policy document (with caching)."""
+        if policy_arn in self._policy_cache:
+            return self._policy_cache[policy_arn]
+        
+        try:
+            policy = iam.get_policy(PolicyArn=policy_arn)["Policy"]
+            version_id = policy["DefaultVersionId"]
+            
+            version = iam.get_policy_version(
+                PolicyArn=policy_arn,
+                VersionId=version_id,
+            )["PolicyVersion"]
+            
+            doc = version["Document"]
+            self._policy_cache[policy_arn] = doc
+            self._stats["policies_analyzed"] += 1
+            
+            return doc
+            
+        except Exception as e:
+            self._debug_log(f"Error getting policy {policy_arn}: {e}")
+            return None
+
+    async def _analyze_policy_document(
+        self,
+        policy_doc: dict,
+        policy_name: str,
+        policy_type: str,
+        entity_arn: str,
+    ) -> None:
+        """Analyze a policy document for security issues."""
+        statements = policy_doc.get("Statement", [])
+        if isinstance(statements, dict):
+            statements = [statements]
+        
+        for statement in statements:
+            if statement.get("Effect") != "Allow":
+                continue
+            
+            actions = statement.get("Action", [])
+            if isinstance(actions, str):
+                actions = [actions]
+            
+            resources = statement.get("Resource", [])
+            if isinstance(resources, str):
+                resources = [resources]
+            
+            # Check for dangerous patterns
+            for action_pattern, resource_pattern, reason in DANGEROUS_PATTERNS:
+                if self._matches_pattern(actions, action_pattern) and \
+                   self._matches_pattern(resources, resource_pattern):
+                    
+                    self.add_finding(Finding(
+                        rule_id="IAM-OVERLY-PERMISSIVE",
+                        severity=Severity.HIGH,
+                        title="Overly Permissive IAM Policy",
+                        description=f"Policy {policy_name} ({policy_type}) attached to {entity_arn}: {reason}",
+                        resource_id=policy_name,
+                        resource_type="AWS::IAM::Policy",
+                        resource_arn=entity_arn,
+                        suggestion="Apply principle of least privilege - restrict to specific actions and resources",
+                        metadata={
+                            "actions": actions,
+                            "resources": resources,
+                            "policy_type": policy_type,
+                        },
+                    ))
+                    self._scan_logger.finding("high", "Overly Permissive Policy", policy_name)
+            
+            # Check for privilege escalation actions
+            for action in actions:
+                if action == "*":
+                    continue  # Already caught by dangerous patterns
+                
+                # Check if action matches any escalation action
+                for escalation_action, description in ESCALATION_ACTIONS.items():
+                    if self._action_matches(action, escalation_action):
+                        self._stats["escalation_paths"] += 1
+                        
+                        self.add_finding(Finding(
+                            rule_id="IAM-ESCALATION-RISK",
+                            severity=Severity.HIGH,
+                            title="Potential Privilege Escalation",
+                            description=f"Policy {policy_name} allows {escalation_action}: {description}",
+                            resource_id=policy_name,
+                            resource_type="AWS::IAM::Policy",
+                            resource_arn=entity_arn,
+                            suggestion=f"Review if {escalation_action} is necessary. Consider restricting with conditions.",
+                            metadata={
+                                "action": escalation_action,
+                                "risk_description": description,
+                            },
+                        ))
+            
+            # Check for NotAction/NotResource (often misused)
+            if "NotAction" in statement or "NotResource" in statement:
+                self.add_finding(Finding(
+                    rule_id="IAM-NOT-ACTION-USED",
+                    severity=Severity.MEDIUM,
+                    title="Policy Uses NotAction/NotResource",
+                    description=f"Policy {policy_name} uses NotAction or NotResource which can be dangerous if misconfigured",
+                    resource_id=policy_name,
+                    resource_type="AWS::IAM::Policy",
+                    resource_arn=entity_arn,
+                    suggestion="Review NotAction/NotResource usage carefully - it may allow unintended actions",
+                ))
+
