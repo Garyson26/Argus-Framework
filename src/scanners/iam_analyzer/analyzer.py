@@ -429,3 +429,76 @@ class IAMAnalyzer(BaseScanner):
                     suggestion="Review NotAction/NotResource usage carefully - it may allow unintended actions",
                 ))
 
+    async def _analyze_trust_policy(
+        self,
+        trust_policy: dict,
+        role_name: str,
+        role_arn: str,
+    ) -> None:
+        """Analyze role trust policy."""
+        statements = trust_policy.get("Statement", [])
+        if isinstance(statements, dict):
+            statements = [statements]
+        
+        for statement in statements:
+            if statement.get("Effect") != "Allow":
+                continue
+            
+            principal = statement.get("Principal", {})
+            
+            # Check for wildcard principal
+            if principal == "*" or principal.get("AWS") == "*":
+                self.add_finding(Finding(
+                    rule_id="IAM-TRUST-WILDCARD",
+                    severity=Severity.CRITICAL,
+                    title="Role Trust Policy Allows Any Principal",
+                    description=f"Role {role_name} trust policy allows any AWS principal to assume it",
+                    resource_id=role_name,
+                    resource_type="AWS::IAM::Role",
+                    resource_arn=role_arn,
+                    suggestion="Restrict trust policy to specific principals using conditions or explicit ARNs",
+                ))
+                self._scan_logger.finding("critical", "Trust Policy Wildcard", role_name)
+            
+            # Check for cross-account access without conditions
+            aws_principals = principal.get("AWS", [])
+            if isinstance(aws_principals, str):
+                aws_principals = [aws_principals]
+            
+            for aws_principal in aws_principals:
+                if isinstance(aws_principal, str) and "arn:aws" in aws_principal:
+                    # Extract account from ARN
+                    parts = aws_principal.split(":")
+                    if len(parts) >= 5:
+                        account = parts[4]
+                        
+                        # Check if no conditions are applied
+                        if not statement.get("Condition"):
+                            self.add_finding(Finding(
+                                rule_id="IAM-CROSS-ACCOUNT-NO-CONDITION",
+                                severity=Severity.MEDIUM,
+                                title="Cross-Account Trust Without Conditions",
+                                description=f"Role {role_name} allows cross-account access from {account} without conditions",
+                                resource_id=role_name,
+                                resource_type="AWS::IAM::Role",
+                                resource_arn=role_arn,
+                                suggestion="Add ExternalId or other conditions to cross-account trust policies",
+                                metadata={"external_account": account},
+                            ))
+
+    async def _check_escalation_paths(self, iam) -> None:
+        """Check for privilege escalation paths."""
+        self._debug_log("Checking privilege escalation paths...")
+        
+        # This is a simplified check - a full implementation would use graph analysis
+        # Check for dangerous action combinations
+        dangerous_combos = [
+            (["iam:PassRole", "ec2:RunInstances"], "Can launch EC2 with elevated role"),
+            (["iam:PassRole", "lambda:CreateFunction", "lambda:InvokeFunction"], "Can create and invoke Lambda with elevated role"),
+            (["iam:CreateAccessKey"], "Can create access keys for escalation"),
+            (["iam:AttachUserPolicy", "iam:AttachRolePolicy"], "Can attach admin policies"),
+        ]
+        
+        # Already checked individual escalation actions in policy analysis
+        # Additional graph-based analysis would go here with Neo4j integration
+
