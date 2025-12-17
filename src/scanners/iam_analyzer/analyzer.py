@@ -502,3 +502,21 @@ class IAMAnalyzer(BaseScanner):
         # Already checked individual escalation actions in policy analysis
         # Additional graph-based analysis would go here with Neo4j integration
 
+    def _matches_pattern(self, items: list, pattern: str) -> bool:
+        """Check if any item matches the pattern."""
+        for item in items:
+            if item == pattern or item == "*":
+                return True
+        return False
+
+    def _action_matches(self, action: str, target: str) -> bool:
+        """Check if an action matches a target (with wildcard support)."""
+        if action == "*" or action == target:
+            return True
+        
+        # Handle wildcards like iam:* or iam:Create*
+        if action.endswith("*"):
+            prefix = action[:-1]
+            return target.startswith(prefix)
+        
+        return False
