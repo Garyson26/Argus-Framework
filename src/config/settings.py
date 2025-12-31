@@ -92,3 +92,23 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     aws_assume_role_arn: Optional[str] = None
 
+    # Scanning Configuration
+    max_concurrent_scans: int = Field(default=5, ge=1, le=50)
+    scan_timeout: int = Field(default=3600, ge=60, le=86400)  # 1 hour default, max 24 hours
+    max_findings_per_scan: int = Field(default=10000, ge=100, le=100000)
+
+    # Secret Scanner Configuration
+    secret_entropy_threshold: float = Field(default=4.5, ge=3.0, le=6.0)
+    secret_max_file_size_mb: int = Field(default=10, ge=1, le=100)
+    secret_scan_git_history: bool = True
+    secret_max_commits: int = Field(default=1000, ge=1, le=10000)
+
+    # IaC Scanner Configuration
+    iac_checkov_enabled: bool = True
+    iac_skip_checks: list[str] = Field(default_factory=list)
+    iac_custom_rules_path: Optional[str] = None
+
+    # Report Configuration
+    report_output_dir: str = "./reports"
+    report_format: str = "json"  # json, markdown, html
+

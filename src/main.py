@@ -423,3 +423,10 @@ def _display_scan_results(results: dict, scan_name: str, output: Optional[Path])
         "info": "dim",
     }
     
+    for severity, count in severity_counts.items():
+        style = severity_styles.get(severity, "white")
+        table.add_row(
+            f"[{style}]{severity.upper()}[/]",
+            f"[{style}]{count}[/]"
+        )
+    
