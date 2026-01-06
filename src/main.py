@@ -430,3 +430,26 @@ def _display_scan_results(results: dict, scan_name: str, output: Optional[Path])
             f"[{style}]{count}[/]"
         )
     
+    table.add_section()
+    table.add_row("[bold]TOTAL[/]", f"[bold]{total}[/]")
+    
+    console.print(table)
+    
+    # Save to file if specified
+    if output:
+        import json
+        output.write_text(json.dumps(results, indent=2, default=str))
+        console.print(f"\n[green]✅ Results saved to: {output}[/]")
+    
+    # Exit code based on findings
+    if severity_counts["critical"] > 0 or severity_counts["high"] > 0:
+        console.print("\n[red bold]⚠️ Critical or High severity issues found![/]")
+        raise typer.Exit(1)
+    elif total > 0:
+        console.print("\n[yellow]⚡ Issues found, please review the results.[/]")
+        raise typer.Exit(0)
+    else:
+        console.print("\n[green bold]✅ No issues found![/]")
+        raise typer.Exit(0)
+
+
