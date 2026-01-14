@@ -430,3 +430,58 @@ def _display_scan_results(results: dict, scan_name: str, output: Optional[Path])
             f"[{style}]{count}[/]"
         )
     
+    table.add_section()
+    table.add_row("[bold]TOTAL[/]", f"[bold]{total}[/]")
+    
+    console.print(table)
+    
+    # Save to file if specified
+    if output:
+        import json
+        output.write_text(json.dumps(results, indent=2, default=str))
+        console.print(f"\n[green]✅ Results saved to: {output}[/]")
+    
+    # Exit code based on findings
+    if severity_counts["critical"] > 0 or severity_counts["high"] > 0:
+        console.print("\n[red bold]⚠️ Critical or High severity issues found![/]")
+        raise typer.Exit(1)
+    elif total > 0:
+        console.print("\n[yellow]⚡ Issues found, please review the results.[/]")
+        raise typer.Exit(0)
+    else:
+        console.print("\n[green bold]✅ No issues found![/]")
+        raise typer.Exit(0)
+
+
+# =============================================================================
+# ADDITIONAL COMMANDS
+# =============================================================================
+
+@app.command("config")
+def show_config() -> None:
+    """
+    ⚙️ Show current configuration settings.
+    """
+    settings = get_settings()
+    
+    table = Table(title="⚙️ Argus Configuration")
+    table.add_column("Setting", style="cyan")
+    table.add_column("Value", style="green")
+    
+    # Show non-sensitive settings
+    table.add_row("App Name", settings.app_name)
+    table.add_row("Version", settings.app_version)
+    table.add_row("Debug", str(settings.debug))
+    table.add_row("Log Level", settings.log_level)
+    table.add_row("PostgreSQL Host", settings.postgres_host)
+    table.add_row("PostgreSQL Port", str(settings.postgres_port))
+    table.add_row("PostgreSQL DB", settings.postgres_db)
+    table.add_row("Neo4j URI", settings.neo4j_uri)
+    table.add_row("Redis Host", settings.redis_host)
+    table.add_row("AWS Region", settings.aws_region)
+    table.add_row("AWS Profile", settings.aws_profile or "(default)")
+    table.add_row("Max Concurrent Scans", str(settings.max_concurrent_scans))
+    table.add_row("Scan Timeout (s)", str(settings.scan_timeout))
+    table.add_row("Report Output Dir", settings.report_output_dir)
+    table.add_row("Report Format", settings.report_format)
+    
