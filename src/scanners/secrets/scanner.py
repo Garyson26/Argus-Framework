@@ -3,9 +3,18 @@ Secret leak scanner for FuFuFaFa.
 
 Scans repositories and directories for hardcoded secrets, API keys,
 and other sensitive credentials using pattern matching and entropy analysis.
+
+Features:
+- Parallel file scanning with asyncio
+- Pattern-based detection with 50+ rules
+- Shannon entropy analysis
+- Git history scanning
+- Progress tracking with Rich
 """
 
+import asyncio
 import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -22,8 +31,13 @@ from src.scanners.secrets.entropy import (
 )
 from src.scanners.secrets.patterns import SecretPattern, SecretType, get_all_patterns
 from src.utils.git_helper import GitHelper, scan_directory_files
+from src.utils.progress import ScanProgress, BatchProcessor
 
 logger = get_logger(__name__)
+
+# Default batch size for parallel processing
+DEFAULT_BATCH_SIZE = 50
+DEFAULT_MAX_WORKERS = 10
 
 
 # File extensions to scan
@@ -72,6 +86,10 @@ class SecretScanner(BaseScanner):
         include_extensions: Optional[set[str]] = None,
         exclude_patterns: Optional[list[str]] = None,
         debug: bool = False,
+        parallel: bool = True,
+        batch_size: int = DEFAULT_BATCH_SIZE,
+        max_workers: int = DEFAULT_MAX_WORKERS,
+        show_progress: bool = True,
     ):
         """
         Initialize the secret scanner.
@@ -84,6 +102,10 @@ class SecretScanner(BaseScanner):
             include_extensions: Additional file extensions to scan
             exclude_patterns: Patterns to exclude from scanning
             debug: Enable debug mode for verbose output
+            parallel: Enable parallel file scanning (default: True)
+            batch_size: Number of files to process per batch
+            max_workers: Maximum concurrent workers
+            show_progress: Show progress bar during scanning
         """
         super().__init__()
         
@@ -94,6 +116,14 @@ class SecretScanner(BaseScanner):
         self.entropy_threshold = entropy_threshold
         self.patterns = patterns or get_all_patterns()
         self.debug = debug or settings.debug
+        
+        # Parallel processing settings
+        self.parallel = parallel
+        self.batch_size = batch_size
+        self.max_workers = max_workers
+        self.show_progress = show_progress
+        self._executor: Optional[ThreadPoolExecutor] = None
+        self._progress: Optional[ScanProgress] = None
         
         # File extensions
         self.extensions = SCANNABLE_EXTENSIONS.copy()
@@ -121,6 +151,7 @@ class SecretScanner(BaseScanner):
             "patterns_checked": len(self.patterns),
             "bytes_scanned": 0,
         }
+        self._lock = asyncio.Lock()
 
     async def scan(self, target: str) -> dict[str, Any]:
         """
@@ -230,22 +261,21 @@ class SecretScanner(BaseScanner):
             self._scan_logger.warning(f"Git history scan error: {e}")
 
     async def _scan_directory(self, directory: Path) -> None:
-        """Scan directory for secrets."""
+        """
+        Scan directory for secrets with parallel processing.
+        
+        Uses batch processing and concurrent execution for performance.
+        """
+        # Collect scannable files
+        files_to_scan = []
         for file_path in directory.rglob("*"):
-            # Skip directories
             if file_path.is_dir():
                 continue
-            
-            # Skip excluded patterns
             if self._is_excluded(file_path):
                 continue
-            
-            # Check if file should be scanned
             relative_path = str(file_path.relative_to(directory))
             if not self._should_scan_file(relative_path):
                 continue
-            
-            # Check file size
             try:
                 file_size = file_path.stat().st_size
                 if file_size > MAX_FILE_SIZE:
@@ -253,18 +283,97 @@ class SecretScanner(BaseScanner):
                     continue
             except OSError:
                 continue
+            files_to_scan.append((file_path, relative_path))
+        
+        total_files = len(files_to_scan)
+        self._debug_log(f"Found {total_files} files to scan")
+        
+        if self.parallel and total_files > 1:
+            await self._scan_files_parallel(files_to_scan, directory)
+        else:
+            await self._scan_files_sequential(files_to_scan)
+
+    async def _scan_files_parallel(self, files: list[tuple[Path, str]], base_dir: Path) -> None:
+        """
+        Scan files in parallel batches.
+        
+        Args:
+            files: List of (file_path, relative_path) tuples
+            base_dir: Base directory for relative paths
+        """
+        total_files = len(files)
+        
+        # Create progress tracker if enabled
+        if self.show_progress:
+            self._progress = ScanProgress(description="Scanning secrets")
+            self._progress.__enter__()
+            self._progress.add_task("files", total=total_files, description="Scanning files")
+        
+        try:
+            # Create thread pool for file I/O
+            self._executor = ThreadPoolExecutor(max_workers=self.max_workers)
             
-            # Read and scan file
-            try:
+            # Process in batches
+            for batch_start in range(0, total_files, self.batch_size):
+                batch = files[batch_start:batch_start + self.batch_size]
+                
+                # Create tasks for this batch
+                tasks = [self._scan_file_async(fp, rp) for fp, rp in batch]
+                
+                # Execute batch concurrently
+                await asyncio.gather(*tasks, return_exceptions=True)
+            
+        finally:
+            if self._executor:
+                self._executor.shutdown(wait=False)
+                self._executor = None
+            if self._progress:
+                self._progress.__exit__(None, None, None)
+                if self.show_progress:
+                    self._progress.print_summary()
+                self._progress = None
+
+    async def _scan_files_sequential(self, files: list[tuple[Path, str]]) -> None:
+        """Scan files sequentially (fallback for small directories)."""
+        for file_path, relative_path in files:
+            await self._scan_file_async(file_path, relative_path)
+
+    async def _scan_file_async(self, file_path: Path, relative_path: str) -> None:
+        """
+        Scan a single file asynchronously.
+        
+        Args:
+            file_path: Absolute path to file
+            relative_path: Relative path for reporting
+        """
+        try:
+            # Read file using thread pool to avoid blocking
+            loop = asyncio.get_event_loop()
+            if self._executor:
+                content = await loop.run_in_executor(
+                    self._executor, 
+                    file_path.read_bytes
+                )
+            else:
                 content = file_path.read_bytes()
+            
+            # Update stats thread-safely
+            async with self._lock:
                 self._stats["bytes_scanned"] += len(content)
                 self._stats["files_scanned"] += 1
+            
+            # Decode and scan
+            text = content.decode('utf-8', errors='ignore')
+            await self._scan_content(text, file_path=relative_path)
+            
+            # Update progress
+            if self._progress:
+                self._progress.update("files", advance=1)
                 
-                text = content.decode('utf-8', errors='ignore')
-                await self._scan_content(text, file_path=relative_path)
-                
-            except Exception as e:
-                self._debug_log(f"Error scanning {relative_path}: {e}")
+        except Exception as e:
+            self._debug_log(f"Error scanning {relative_path}: {e}")
+            if self._progress:
+                self._progress.update("files", advance=1)
 
     def _should_scan_file(self, file_path: str) -> bool:
         """Check if a file should be scanned based on extension/name."""

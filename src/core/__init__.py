@@ -9,6 +9,7 @@ from src.core.exceptions import (
     ValidationError,
 )
 from src.core.logger import get_logger, setup_logging
+from src.core.rules_engine import RulesEngine, CustomRule, get_rules_engine
 
 __all__ = [
     "FuFuFaFaError",
@@ -19,4 +20,8 @@ __all__ = [
     "ValidationError",
     "get_logger",
     "setup_logging",
+    "RulesEngine",
+    "CustomRule",
+    "get_rules_engine",
 ]
+

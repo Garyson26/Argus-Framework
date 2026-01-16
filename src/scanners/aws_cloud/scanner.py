@@ -3,18 +3,30 @@ AWS Cloud misconfiguration scanner for FuFuFaFa.
 
 Scans AWS accounts for security misconfigurations across multiple services
 including S3, EC2, IAM, RDS, Lambda, VPC, and more.
+
+Features:
+- Parallel region scanning with asyncio
+- LRU caching for repeated API calls
+- Progress tracking with Rich
+- Comprehensive security checks
 """
 
+import asyncio
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from functools import lru_cache
+from typing import Any, Callable, Optional
 
 from src.config import get_settings
 from src.core.exceptions import AWSError, CloudScanError
 from src.core.logger import ScanLogger, get_logger
 from src.scanners.base import BaseScanner, Finding, Severity
 from src.utils.aws_boto_helper import AWSClient
+from src.utils.progress import ScanProgress
 
 logger = get_logger(__name__)
+
+# Cache TTL in seconds
+CACHE_TTL = 300  # 5 minutes
 
 
 class AWSCloudScanner(BaseScanner):
@@ -41,6 +53,10 @@ class AWSCloudScanner(BaseScanner):
         regions: Optional[list[str]] = None,
         services: Optional[list[str]] = None,
         debug: bool = False,
+        parallel: bool = True,
+        max_concurrent_regions: int = 5,
+        show_progress: bool = True,
+        use_cache: bool = True,
     ):
         """
         Initialize the AWS Cloud scanner.
@@ -50,6 +66,10 @@ class AWSCloudScanner(BaseScanner):
             regions: List of regions to scan (None = all regions)
             services: List of services to scan (None = all services)
             debug: Enable debug mode
+            parallel: Enable parallel region scanning (default: True)
+            max_concurrent_regions: Maximum concurrent region scans
+            show_progress: Show progress bar during scanning
+            use_cache: Cache API responses to reduce calls
         """
         super().__init__()
         
@@ -60,12 +80,25 @@ class AWSCloudScanner(BaseScanner):
         self.services = services or self.AVAILABLE_SERVICES
         self.debug = debug or settings.debug
         
+        # Parallel scanning settings
+        self.parallel = parallel
+        self.max_concurrent_regions = max_concurrent_regions
+        self.show_progress = show_progress
+        self.use_cache = use_cache
+        self._progress: Optional[ScanProgress] = None
+        self._lock = asyncio.Lock()
+        
+        # Cache for API responses
+        self._cache: dict[str, tuple[Any, datetime]] = {}
+        
         self._aws_client: Optional[AWSClient] = None
         self._scan_logger: Optional[ScanLogger] = None
         self._stats = {
             "regions_scanned": 0,
             "resources_scanned": 0,
             "services_scanned": 0,
+            "cache_hits": 0,
+            "api_calls": 0,
         }
 
     @property
@@ -75,15 +108,47 @@ class AWSCloudScanner(BaseScanner):
             self._aws_client = AWSClient(profile=self.profile)
         return self._aws_client
 
+    def _get_cached(self, key: str, fetcher: Callable[[], Any]) -> Any:
+        """
+        Get cached value or fetch and cache.
+        
+        Args:
+            key: Cache key
+            fetcher: Function to fetch value if not cached
+            
+        Returns:
+            Cached or fetched value
+        """
+        if self.use_cache and key in self._cache:
+            value, cached_at = self._cache[key]
+            if (datetime.utcnow() - cached_at).seconds < CACHE_TTL:
+                self._stats["cache_hits"] += 1
+                return value
+        
+        self._stats["api_calls"] += 1
+        value = fetcher()
+        
+        if self.use_cache:
+            self._cache[key] = (value, datetime.utcnow())
+        
+        return value
+
+    def clear_cache(self) -> None:
+        """Clear the API response cache."""
+        self._cache.clear()
+
     async def scan(self) -> dict[str, Any]:
         """
         Scan AWS account for misconfigurations.
+        
+        Uses parallel region scanning for improved performance.
         
         Returns:
             Dictionary containing scan results
         """
         started_at = datetime.utcnow()
         self.clear_findings()
+        self.clear_cache()
         
         target = f"AWS Account (Profile: {self.profile or 'default'})"
         self._scan_logger = ScanLogger("cloud", target)
@@ -98,24 +163,42 @@ class AWSCloudScanner(BaseScanner):
             scan_regions = self.regions or self._get_enabled_regions()
             self._debug_log(f"Regions to scan: {scan_regions}")
             
-            # Run service-specific scans
-            for service in self.services:
-                self._stats["services_scanned"] += 1
-                
-                if service == "s3":
-                    await self._scan_s3()
-                elif service == "ec2":
-                    await self._scan_ec2(scan_regions)
-                elif service == "iam":
-                    await self._scan_iam()
-                elif service == "rds":
-                    await self._scan_rds(scan_regions)
-                elif service == "lambda":
-                    await self._scan_lambda(scan_regions)
-                elif service == "vpc":
-                    await self._scan_vpc(scan_regions)
-                elif service == "cloudtrail":
-                    await self._scan_cloudtrail(scan_regions)
+            # Setup progress tracking
+            if self.show_progress:
+                self._progress = ScanProgress(description="AWS Cloud Scan")
+                self._progress.__enter__()
+                self._progress.add_task("services", total=len(self.services), description="Scanning services")
+            
+            try:
+                # Run service-specific scans
+                for service in self.services:
+                    async with self._lock:
+                        self._stats["services_scanned"] += 1
+                    
+                    if service == "s3":
+                        await self._scan_s3()
+                    elif service == "ec2":
+                        await self._scan_ec2_parallel(scan_regions)
+                    elif service == "iam":
+                        await self._scan_iam()
+                    elif service == "rds":
+                        await self._scan_rds_parallel(scan_regions)
+                    elif service == "lambda":
+                        await self._scan_lambda_parallel(scan_regions)
+                    elif service == "vpc":
+                        await self._scan_vpc_parallel(scan_regions)
+                    elif service == "cloudtrail":
+                        await self._scan_cloudtrail(scan_regions)
+                    
+                    if self._progress:
+                        self._progress.update("services", advance=1)
+                        
+            finally:
+                if self._progress:
+                    self._progress.__exit__(None, None, None)
+                    if self.show_progress:
+                        self._progress.print_summary()
+                    self._progress = None
             
             # Create result
             result = self.create_result(
@@ -145,7 +228,71 @@ class AWSCloudScanner(BaseScanner):
 
     def _get_enabled_regions(self) -> list[str]:
         """Get list of enabled regions."""
-        return self.aws.get_available_regions("ec2")
+        return self._get_cached(
+            "enabled_regions",
+            lambda: self.aws.get_available_regions("ec2")
+        )
+
+    # =========================================================================
+    # PARALLEL REGION SCANNING HELPERS
+    # =========================================================================
+    
+    async def _scan_regions_parallel(
+        self,
+        regions: list[str],
+        scanner: Callable[[str], Any],
+        service_name: str,
+    ) -> None:
+        """
+        Scan multiple regions in parallel.
+        
+        Args:
+            regions: List of regions to scan
+            scanner: Coroutine function to scan a single region
+            service_name: Name of service being scanned
+        """
+        if not self.parallel or len(regions) <= 1:
+            # Sequential fallback
+            for region in regions:
+                await scanner(region)
+                async with self._lock:
+                    self._stats["regions_scanned"] += 1
+            return
+        
+        # Parallel scanning with semaphore for rate limiting
+        semaphore = asyncio.Semaphore(self.max_concurrent_regions)
+        
+        async def scan_with_semaphore(region: str):
+            async with semaphore:
+                try:
+                    await scanner(region)
+                    async with self._lock:
+                        self._stats["regions_scanned"] += 1
+                except Exception as e:
+                    self._debug_log(f"Error scanning {service_name} in {region}: {e}")
+        
+        tasks = [scan_with_semaphore(region) for region in regions]
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _scan_ec2_parallel(self, regions: list[str]) -> None:
+        """Scan EC2 resources across regions in parallel."""
+        self._debug_log("Scanning EC2 resources (parallel)...")
+        await self._scan_regions_parallel(regions, self._scan_ec2_region, "EC2")
+
+    async def _scan_rds_parallel(self, regions: list[str]) -> None:
+        """Scan RDS instances across regions in parallel."""
+        self._debug_log("Scanning RDS instances (parallel)...")
+        await self._scan_regions_parallel(regions, self._scan_rds_region, "RDS")
+
+    async def _scan_lambda_parallel(self, regions: list[str]) -> None:
+        """Scan Lambda functions across regions in parallel."""
+        self._debug_log("Scanning Lambda functions (parallel)...")
+        await self._scan_regions_parallel(regions, self._scan_lambda_region, "Lambda")
+
+    async def _scan_vpc_parallel(self, regions: list[str]) -> None:
+        """Scan VPCs across regions in parallel."""
+        self._debug_log("Scanning VPCs (parallel)...")
+        await self._scan_regions_parallel(regions, self._scan_vpc_region, "VPC")
 
     # =========================================================================
     # S3 SCANNING
@@ -282,20 +429,15 @@ class AWSCloudScanner(BaseScanner):
     # EC2 SCANNING
     # =========================================================================
     
-    async def _scan_ec2(self, regions: list[str]) -> None:
-        """Scan EC2 resources for misconfigurations."""
-        self._debug_log("Scanning EC2 resources...")
+    async def _scan_ec2_region(self, region: str) -> None:
+        """Scan EC2 resources in a single region."""
+        ec2 = self.aws.get_client("ec2", region=region)
         
-        for region in regions:
-            self._stats["regions_scanned"] += 1
-            
-            ec2 = self.aws.get_client("ec2", region=region)
-            
-            # Check security groups
-            await self._check_security_groups(ec2, region)
-            
-            # Check EBS volumes
-            await self._check_ebs_encryption(ec2, region)
+        # Check security groups
+        await self._check_security_groups(ec2, region)
+        
+        # Check EBS volumes
+        await self._check_ebs_encryption(ec2, region)
 
     async def _check_security_groups(self, ec2, region: str) -> None:
         """Check security groups for overly permissive rules."""
@@ -372,6 +514,13 @@ class AWSCloudScanner(BaseScanner):
                     ))
         except Exception as e:
             self._debug_log(f"Error checking EBS volumes in {region}: {e}")
+
+    async def _add_finding_async(self, finding: Finding) -> None:
+        """Thread-safe finding addition."""
+        async with self._lock:
+            self.add_finding(finding)
+            if self._progress:
+                self._progress.add_finding(finding.severity.value)
 
     # =========================================================================
     # IAM SCANNING
@@ -492,163 +641,157 @@ class AWSCloudScanner(BaseScanner):
     # RDS SCANNING
     # =========================================================================
     
-    async def _scan_rds(self, regions: list[str]) -> None:
-        """Scan RDS instances for misconfigurations."""
-        self._debug_log("Scanning RDS instances...")
+    async def _scan_rds_region(self, region: str) -> None:
+        """Scan RDS instances in a single region."""
+        rds = self.aws.get_client("rds", region=region)
         
-        for region in regions:
-            rds = self.aws.get_client("rds", region=region)
+        try:
+            instances = rds.describe_db_instances()["DBInstances"]
             
-            try:
-                instances = rds.describe_db_instances()["DBInstances"]
-                
-                for instance in instances:
+            for instance in instances:
+                async with self._lock:
                     self._stats["resources_scanned"] += 1
-                    db_id = instance["DBInstanceIdentifier"]
+                db_id = instance["DBInstanceIdentifier"]
+                
+                # Check public accessibility
+                if instance.get("PubliclyAccessible", False):
+                    self.add_finding(Finding(
+                        rule_id="RDS-PUBLIC-ACCESS",
+                        severity=Severity.CRITICAL,
+                        title="RDS Instance Publicly Accessible",
+                        description=f"RDS instance {db_id} is publicly accessible",
+                        resource_id=db_id,
+                        resource_type="AWS::RDS::DBInstance",
+                        resource_arn=instance.get("DBInstanceArn"),
+                        suggestion="Disable public accessibility unless absolutely necessary",
+                        metadata={"region": region},
+                    ))
+                    self._scan_logger.finding("critical", "RDS Public Access", db_id)
+                
+                # Check encryption
+                if not instance.get("StorageEncrypted", False):
+                    self.add_finding(Finding(
+                        rule_id="RDS-NO-ENCRYPTION",
+                        severity=Severity.HIGH,
+                        title="RDS Instance Not Encrypted",
+                        description=f"RDS instance {db_id} storage is not encrypted",
+                        resource_id=db_id,
+                        resource_type="AWS::RDS::DBInstance",
+                        resource_arn=instance.get("DBInstanceArn"),
+                        suggestion="Enable storage encryption for data protection",
+                        metadata={"region": region},
+                    ))
+                    self._scan_logger.finding("high", "RDS No Encryption", db_id)
+                
+                # Check backup retention
+                retention = instance.get("BackupRetentionPeriod", 0)
+                if retention < 7:
+                    self.add_finding(Finding(
+                        rule_id="RDS-LOW-BACKUP-RETENTION",
+                        severity=Severity.MEDIUM,
+                        title="RDS Instance Low Backup Retention",
+                        description=f"RDS instance {db_id} has backup retention of only {retention} days",
+                        resource_id=db_id,
+                        resource_type="AWS::RDS::DBInstance",
+                        suggestion="Increase backup retention to at least 7 days",
+                        metadata={"region": region, "retention_days": retention},
+                    ))
                     
-                    # Check public accessibility
-                    if instance.get("PubliclyAccessible", False):
-                        self.add_finding(Finding(
-                            rule_id="RDS-PUBLIC-ACCESS",
-                            severity=Severity.CRITICAL,
-                            title="RDS Instance Publicly Accessible",
-                            description=f"RDS instance {db_id} is publicly accessible",
-                            resource_id=db_id,
-                            resource_type="AWS::RDS::DBInstance",
-                            resource_arn=instance.get("DBInstanceArn"),
-                            suggestion="Disable public accessibility unless absolutely necessary",
-                            metadata={"region": region},
-                        ))
-                        self._scan_logger.finding("critical", "RDS Public Access", db_id)
-                    
-                    # Check encryption
-                    if not instance.get("StorageEncrypted", False):
-                        self.add_finding(Finding(
-                            rule_id="RDS-NO-ENCRYPTION",
-                            severity=Severity.HIGH,
-                            title="RDS Instance Not Encrypted",
-                            description=f"RDS instance {db_id} storage is not encrypted",
-                            resource_id=db_id,
-                            resource_type="AWS::RDS::DBInstance",
-                            resource_arn=instance.get("DBInstanceArn"),
-                            suggestion="Enable storage encryption for data protection",
-                            metadata={"region": region},
-                        ))
-                        self._scan_logger.finding("high", "RDS No Encryption", db_id)
-                    
-                    # Check backup retention
-                    retention = instance.get("BackupRetentionPeriod", 0)
-                    if retention < 7:
-                        self.add_finding(Finding(
-                            rule_id="RDS-LOW-BACKUP-RETENTION",
-                            severity=Severity.MEDIUM,
-                            title="RDS Instance Low Backup Retention",
-                            description=f"RDS instance {db_id} has backup retention of only {retention} days",
-                            resource_id=db_id,
-                            resource_type="AWS::RDS::DBInstance",
-                            suggestion="Increase backup retention to at least 7 days",
-                            metadata={"region": region, "retention_days": retention},
-                        ))
-                        
-            except Exception as e:
-                self._debug_log(f"Error scanning RDS in {region}: {e}")
+        except Exception as e:
+            self._debug_log(f"Error scanning RDS in {region}: {e}")
 
     # =========================================================================
     # LAMBDA SCANNING
     # =========================================================================
     
-    async def _scan_lambda(self, regions: list[str]) -> None:
-        """Scan Lambda functions for misconfigurations."""
-        self._debug_log("Scanning Lambda functions...")
+    # List of outdated runtimes
+    OUTDATED_RUNTIMES = [
+        "python2.7", "python3.6", "python3.7",
+        "nodejs10.x", "nodejs12.x",
+        "ruby2.5",
+        "dotnetcore2.1",
+    ]
+    
+    async def _scan_lambda_region(self, region: str) -> None:
+        """Scan Lambda functions in a single region."""
+        lambda_client = self.aws.get_client("lambda", region=region)
         
-        # List of outdated runtimes
-        outdated_runtimes = [
-            "python2.7", "python3.6", "python3.7",
-            "nodejs10.x", "nodejs12.x",
-            "ruby2.5",
-            "dotnetcore2.1",
-        ]
-        
-        for region in regions:
-            lambda_client = self.aws.get_client("lambda", region=region)
+        try:
+            functions = lambda_client.list_functions()["Functions"]
             
-            try:
-                functions = lambda_client.list_functions()["Functions"]
-                
-                for func in functions:
+            for func in functions:
+                async with self._lock:
                     self._stats["resources_scanned"] += 1
-                    func_name = func["FunctionName"]
+                func_name = func["FunctionName"]
+                
+                # Check for outdated runtime
+                runtime = func.get("Runtime", "")
+                if runtime in self.OUTDATED_RUNTIMES:
+                    self.add_finding(Finding(
+                        rule_id="LAMBDA-OUTDATED-RUNTIME",
+                        severity=Severity.MEDIUM,
+                        title="Lambda Function Using Outdated Runtime",
+                        description=f"Function {func_name} uses outdated runtime: {runtime}",
+                        resource_id=func_name,
+                        resource_type="AWS::Lambda::Function",
+                        resource_arn=func["FunctionArn"],
+                        suggestion="Update to a supported runtime version",
+                        metadata={"region": region, "runtime": runtime},
+                    ))
+                
+                # Check for missing DLQ
+                if not func.get("DeadLetterConfig"):
+                    self.add_finding(Finding(
+                        rule_id="LAMBDA-NO-DLQ",
+                        severity=Severity.LOW,
+                        title="Lambda Function Missing Dead Letter Queue",
+                        description=f"Function {func_name} has no DLQ configured",
+                        resource_id=func_name,
+                        resource_type="AWS::Lambda::Function",
+                        resource_arn=func["FunctionArn"],
+                        suggestion="Configure a Dead Letter Queue for error handling",
+                        metadata={"region": region},
+                    ))
                     
-                    # Check for outdated runtime
-                    runtime = func.get("Runtime", "")
-                    if runtime in outdated_runtimes:
-                        self.add_finding(Finding(
-                            rule_id="LAMBDA-OUTDATED-RUNTIME",
-                            severity=Severity.MEDIUM,
-                            title="Lambda Function Using Outdated Runtime",
-                            description=f"Function {func_name} uses outdated runtime: {runtime}",
-                            resource_id=func_name,
-                            resource_type="AWS::Lambda::Function",
-                            resource_arn=func["FunctionArn"],
-                            suggestion="Update to a supported runtime version",
-                            metadata={"region": region, "runtime": runtime},
-                        ))
-                    
-                    # Check for missing DLQ
-                    if not func.get("DeadLetterConfig"):
-                        self.add_finding(Finding(
-                            rule_id="LAMBDA-NO-DLQ",
-                            severity=Severity.LOW,
-                            title="Lambda Function Missing Dead Letter Queue",
-                            description=f"Function {func_name} has no DLQ configured",
-                            resource_id=func_name,
-                            resource_type="AWS::Lambda::Function",
-                            resource_arn=func["FunctionArn"],
-                            suggestion="Configure a Dead Letter Queue for error handling",
-                            metadata={"region": region},
-                        ))
-                        
-            except Exception as e:
-                self._debug_log(f"Error scanning Lambda in {region}: {e}")
+        except Exception as e:
+            self._debug_log(f"Error scanning Lambda in {region}: {e}")
 
     # =========================================================================
     # VPC SCANNING
     # =========================================================================
     
-    async def _scan_vpc(self, regions: list[str]) -> None:
-        """Scan VPC for misconfigurations."""
-        self._debug_log("Scanning VPCs...")
+    async def _scan_vpc_region(self, region: str) -> None:
+        """Scan VPCs in a single region."""
+        ec2 = self.aws.get_client("ec2", region=region)
         
-        for region in regions:
-            ec2 = self.aws.get_client("ec2", region=region)
+        try:
+            vpcs = ec2.describe_vpcs()["Vpcs"]
             
-            try:
-                vpcs = ec2.describe_vpcs()["Vpcs"]
-                
-                for vpc in vpcs:
+            for vpc in vpcs:
+                async with self._lock:
                     self._stats["resources_scanned"] += 1
-                    vpc_id = vpc["VpcId"]
+                vpc_id = vpc["VpcId"]
+                
+                # Check VPC Flow Logs
+                flow_logs = ec2.describe_flow_logs(
+                    Filters=[{"Name": "resource-id", "Values": [vpc_id]}]
+                )["FlowLogs"]
+                
+                if not flow_logs:
+                    self.add_finding(Finding(
+                        rule_id="VPC-NO-FLOW-LOGS",
+                        severity=Severity.MEDIUM,
+                        title="VPC Flow Logs Not Enabled",
+                        description=f"VPC {vpc_id} does not have flow logs enabled",
+                        resource_id=vpc_id,
+                        resource_type="AWS::EC2::VPC",
+                        suggestion="Enable VPC Flow Logs for network traffic monitoring",
+                        metadata={"region": region},
+                    ))
+                    self._scan_logger.finding("medium", "VPC No Flow Logs", vpc_id)
                     
-                    # Check VPC Flow Logs
-                    flow_logs = ec2.describe_flow_logs(
-                        Filters=[{"Name": "resource-id", "Values": [vpc_id]}]
-                    )["FlowLogs"]
-                    
-                    if not flow_logs:
-                        self.add_finding(Finding(
-                            rule_id="VPC-NO-FLOW-LOGS",
-                            severity=Severity.MEDIUM,
-                            title="VPC Flow Logs Not Enabled",
-                            description=f"VPC {vpc_id} does not have flow logs enabled",
-                            resource_id=vpc_id,
-                            resource_type="AWS::EC2::VPC",
-                            suggestion="Enable VPC Flow Logs for network traffic monitoring",
-                            metadata={"region": region},
-                        ))
-                        self._scan_logger.finding("medium", "VPC No Flow Logs", vpc_id)
-                        
-            except Exception as e:
-                self._debug_log(f"Error scanning VPCs in {region}: {e}")
+        except Exception as e:
+            self._debug_log(f"Error scanning VPCs in {region}: {e}")
 
     # =========================================================================
     # CLOUDTRAIL SCANNING
