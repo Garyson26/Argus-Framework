@@ -214,3 +214,58 @@ def scan_progress(
     """
     Context manager for simple progress tracking.
     
+    Args:
+        description: Progress bar description
+        total: Total items to scan
+        
+    Yields:
+        ScanProgress instance
+        
+    Example:
+        with scan_progress("Scanning files", total=100) as progress:
+            for file in files:
+                # ... process file ...
+                progress.update("main", advance=1)
+    """
+    tracker = ScanProgress(description=description)
+    with tracker:
+        tracker.add_task("main", total=total, description=description)
+        yield tracker
+
+
+class BatchProcessor:
+    """
+    Batch processor for efficient parallel operations.
+    
+    Divides work into batches for concurrent processing while
+    respecting memory limits.
+    """
+
+    def __init__(
+        self,
+        batch_size: int = 50,
+        max_concurrent: int = 10,
+    ):
+        """
+        Initialize batch processor.
+        
+        Args:
+            batch_size: Number of items per batch
+            max_concurrent: Maximum concurrent batches
+        """
+        self.batch_size = batch_size
+        self.max_concurrent = max_concurrent
+
+    def batch(self, items: list) -> Generator[list, None, None]:
+        """
+        Yield batches of items.
+        
+        Args:
+            items: List of items to batch
+            
+        Yields:
+            Batches of items
+        """
+        for i in range(0, len(items), self.batch_size):
+            yield items[i:i + self.batch_size]
+
