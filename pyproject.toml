@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fufufafa"
-version = "0.1.0"
+version = "0.2.0"
 description = "Framework for Unified Flaw & Fault Auditing - AWS Cloud Security Audit Tool"
 readme = "README.md"
 license = "MIT"
@@ -134,7 +134,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 addopts = "-v --tb=short"
 filterwarnings = [
     "ignore::DeprecationWarning",

@@ -325,7 +325,7 @@ class SecretScanner(BaseScanner):
             
         finally:
             if self._executor:
-                self._executor.shutdown(wait=False)
+                self._executor.shutdown(wait=True)
                 self._executor = None
             if self._progress:
                 self._progress.__exit__(None, None, None)

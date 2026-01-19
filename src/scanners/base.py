@@ -6,7 +6,7 @@ Provides common interface and utilities for scanner implementations.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
@@ -73,7 +73,7 @@ class ScanResult:
     scan_type: str
     target: str
     status: str = "completed"
-    started_at: datetime = field(default_factory=datetime.utcnow)
+    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
     findings: list[Finding] = field(default_factory=list)
     error_message: Optional[str] = None
@@ -194,7 +194,7 @@ class BaseScanner(ABC):
             target=target,
             status="failed" if error_message else "completed",
             started_at=started_at,
-            completed_at=datetime.utcnow(),
+            completed_at=datetime.now(timezone.utc),
             findings=self._findings.copy(),
             error_message=error_message,
             metadata=metadata or {},

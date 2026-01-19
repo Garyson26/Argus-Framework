@@ -9,7 +9,7 @@ import json
 import os
 import subprocess
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -21,7 +21,7 @@ from src.scanners.base import BaseScanner, Finding, Severity
 logger = get_logger(__name__)
 
 
-class IaCSCanner(BaseScanner):
+class IaCScanner(BaseScanner):
     """
     Infrastructure as Code scanner using Checkov.
     
@@ -95,7 +95,7 @@ class IaCSCanner(BaseScanner):
         Returns:
             Dictionary containing scan results
         """
-        started_at = datetime.utcnow()
+        started_at = datetime.now(timezone.utc)
         self.clear_findings()
         
         self._scan_logger = ScanLogger("iac", target)

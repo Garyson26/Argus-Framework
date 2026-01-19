@@ -70,11 +70,12 @@ class SecretPattern:
     description: str
     suggestion: str
     confidence: float = 0.9  # Default confidence level
-    keywords: list[str] = None  # Keywords that must be present nearby
+    keywords: Optional[list[str]] = None  # Keywords that must be present nearby
     
     def __post_init__(self):
+        # Convert None to empty list to avoid mutable default issues
         if self.keywords is None:
-            self.keywords = []
+            object.__setattr__(self, 'keywords', [])
         self._compiled_pattern: Optional[re.Pattern] = None
     
     @property

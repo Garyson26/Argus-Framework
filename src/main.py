@@ -309,9 +309,9 @@ def iac_scan(
     skip_list = skip_checks.split(",") if skip_checks else None
     
     # Import scanner module
-    from src.scanners.iac.scanner import IaCSCanner
+    from src.scanners.iac.scanner import IaCScanner
     
-    scanner = IaCSCanner(
+    scanner = IaCScanner(
         framework=framework,
         skip_checks=skip_list,
     )
