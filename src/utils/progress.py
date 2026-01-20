@@ -269,3 +269,71 @@ class BatchProcessor:
         for i in range(0, len(items), self.batch_size):
             yield items[i:i + self.batch_size]
 
+    async def process_batches(
+        self,
+        items: list,
+        processor,
+        progress: Optional[ScanProgress] = None,
+        task_name: str = "main",
+    ):
+        """
+        Process items in parallel batches.
+        
+        Args:
+            items: Items to process
+            processor: Async function to process each item
+            progress: Optional progress tracker
+            task_name: Progress task name
+        """
+        import asyncio
+        
+        semaphore = asyncio.Semaphore(self.max_concurrent)
+        
+        async def process_with_semaphore(item):
+            async with semaphore:
+                result = await processor(item)
+                if progress:
+                    progress.update(task_name, advance=1)
+                return result
+        
+        tasks = [process_with_semaphore(item) for item in items]
+        return await asyncio.gather(*tasks, return_exceptions=True)
+
+
+def print_banner(text: str, style: str = "bold blue") -> None:
+    """Print a styled banner."""
+    console.print(f"\n[{style}]{'─' * 60}[/{style}]")
+    console.print(f"[{style}] {text}[/{style}]")
+    console.print(f"[{style}]{'─' * 60}[/{style}]\n")
+
+
+def print_finding(
+    title: str,
+    severity: str,
+    resource: Optional[str] = None,
+    description: Optional[str] = None,
+) -> None:
+    """
+    Print a finding in a formatted style.
+    
+    Args:
+        title: Finding title
+        severity: Severity level
+        resource: Affected resource
+        description: Finding description
+    """
+    severity_colors = {
+        "critical": "red bold",
+        "high": "orange1",
+        "medium": "yellow",
+        "low": "blue",
+        "info": "dim",
+    }
+    
+    color = severity_colors.get(severity.lower(), "white")
+    
+    console.print(f"  [{color}]● {severity.upper()}[/{color}] {title}")
+    if resource:
+        console.print(f"    [dim]Resource:[/dim] {resource}")
+    if description:
+        console.print(f"    [dim]{description}[/dim]")
