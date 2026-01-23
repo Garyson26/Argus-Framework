@@ -214,3 +214,126 @@ def scan_progress(
     """
     Context manager for simple progress tracking.
     
+    Args:
+        description: Progress bar description
+        total: Total items to scan
+        
+    Yields:
+        ScanProgress instance
+        
+    Example:
+        with scan_progress("Scanning files", total=100) as progress:
+            for file in files:
+                # ... process file ...
+                progress.update("main", advance=1)
+    """
+    tracker = ScanProgress(description=description)
+    with tracker:
+        tracker.add_task("main", total=total, description=description)
+        yield tracker
+
+
+class BatchProcessor:
+    """
+    Batch processor for efficient parallel operations.
+    
+    Divides work into batches for concurrent processing while
+    respecting memory limits.
+    """
+
+    def __init__(
+        self,
+        batch_size: int = 50,
+        max_concurrent: int = 10,
+    ):
+        """
+        Initialize batch processor.
+        
+        Args:
+            batch_size: Number of items per batch
+            max_concurrent: Maximum concurrent batches
+        """
+        self.batch_size = batch_size
+        self.max_concurrent = max_concurrent
+
+    def batch(self, items: list) -> Generator[list, None, None]:
+        """
+        Yield batches of items.
+        
+        Args:
+            items: List of items to batch
+            
+        Yields:
+            Batches of items
+        """
+        for i in range(0, len(items), self.batch_size):
+            yield items[i:i + self.batch_size]
+
+    async def process_batches(
+        self,
+        items: list,
+        processor,
+        progress: Optional[ScanProgress] = None,
+        task_name: str = "main",
+    ):
+        """
+        Process items in parallel batches.
+        
+        Args:
+            items: Items to process
+            processor: Async function to process each item
+            progress: Optional progress tracker
+            task_name: Progress task name
+        """
+        import asyncio
+        
+        semaphore = asyncio.Semaphore(self.max_concurrent)
+        
+        async def process_with_semaphore(item):
+            async with semaphore:
+                result = await processor(item)
+                if progress:
+                    progress.update(task_name, advance=1)
+                return result
+        
+        tasks = [process_with_semaphore(item) for item in items]
+        return await asyncio.gather(*tasks, return_exceptions=True)
+
+
+def print_banner(text: str, style: str = "bold blue") -> None:
+    """Print a styled banner."""
+    console.print(f"\n[{style}]{'─' * 60}[/{style}]")
+    console.print(f"[{style}] {text}[/{style}]")
+    console.print(f"[{style}]{'─' * 60}[/{style}]\n")
+
+
+def print_finding(
+    title: str,
+    severity: str,
+    resource: Optional[str] = None,
+    description: Optional[str] = None,
+) -> None:
+    """
+    Print a finding in a formatted style.
+    
+    Args:
+        title: Finding title
+        severity: Severity level
+        resource: Affected resource
+        description: Finding description
+    """
+    severity_colors = {
+        "critical": "red bold",
+        "high": "orange1",
+        "medium": "yellow",
+        "low": "blue",
+        "info": "dim",
+    }
+    
+    color = severity_colors.get(severity.lower(), "white")
+    
+    console.print(f"  [{color}]● {severity.upper()}[/{color}] {title}")
+    if resource:
+        console.print(f"    [dim]Resource:[/dim] {resource}")
+    if description:
+        console.print(f"    [dim]{description}[/dim]")
