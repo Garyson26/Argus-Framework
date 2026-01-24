@@ -127,3 +127,27 @@ argus --help
 
 ---
 
+## 📖 Usage Guide
+
+### 🕵️ Secret Scanning
+Find hidden secrets in your code, even deep in git history.
+
+```bash
+argus secret scan ./target-repo --history
+```
+**Options:**
+- `--history`: Scan full git history
+- `--entropy 4.5`: Set custom entropy threshold
+- `--json`: Output results in JSON format
+
+### ☁️ Cloud Auditing
+Audit your AWS environment for security gaps.
+
+```bash
+argus cloud scan --profile production --regions us-east-1,us-west-2
+```
+**Options:**
+- `--profile`: Specify AWS CLI profile
+- `--services s3,ec2,iam`: Contextual scanning
+- `--fix`: Attempt auto-remediation (Use with caution!)
+
