@@ -174,3 +174,19 @@ class ContainerScanTarget:
     name: Optional[str] = None
 
 
+class ContainerScanner(BaseScanner):
+    """
+    Container security scanner.
+    
+    Scans container images and configurations for:
+    - Vulnerabilities in container images (via Trivy)
+    - Security misconfigurations in Kubernetes manifests
+    - Dockerfile best practices violations
+    """
+    
+    scanner_type = "container"
+    
+    # K8s manifest file patterns
+    K8S_PATTERNS = ("*.yaml", "*.yml", "*.json")
+    K8S_KEYWORDS = ("apiVersion", "kind", "metadata", "spec")
+    
