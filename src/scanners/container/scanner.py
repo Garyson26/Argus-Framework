@@ -190,3 +190,42 @@ class ContainerScanner(BaseScanner):
     K8S_PATTERNS = ("*.yaml", "*.yml", "*.json")
     K8S_KEYWORDS = ("apiVersion", "kind", "metadata", "spec")
     
+    def __init__(
+        self,
+        use_trivy: bool = True,
+        trivy_severity: str = "CRITICAL,HIGH,MEDIUM",
+        scan_k8s: bool = True,
+        scan_dockerfiles: bool = True,
+        debug: bool = False,
+        show_progress: bool = True,
+    ):
+        """
+        Initialize the container scanner.
+        
+        Args:
+            use_trivy: Use Trivy for image scanning if available
+            trivy_severity: Minimum severity for Trivy findings
+            scan_k8s: Scan Kubernetes manifests
+            scan_dockerfiles: Scan Dockerfiles
+            debug: Enable debug mode
+            show_progress: Show progress bar
+        """
+        super().__init__()
+        
+        self.use_trivy = use_trivy
+        self.trivy_severity = trivy_severity
+        self.scan_k8s = scan_k8s
+        self.scan_dockerfiles = scan_dockerfiles
+        self.debug = debug
+        self.show_progress = show_progress
+        
+        self._trivy_available = self._check_trivy()
+        self._scan_logger: Optional[ScanLogger] = None
+        self._progress: Optional[ScanProgress] = None
+        self._stats = {
+            "images_scanned": 0,
+            "manifests_scanned": 0,
+            "dockerfiles_scanned": 0,
+            "vulnerabilities_found": 0,
+        }
+    
