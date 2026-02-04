@@ -229,3 +229,93 @@ class ContainerScanner(BaseScanner):
             "vulnerabilities_found": 0,
         }
     
+    def _check_trivy(self) -> bool:
+        """Check if Trivy is installed."""
+        return shutil.which("trivy") is not None
+    
+    async def scan(self, target: str) -> dict[str, Any]:
+        """
+        Scan container target for security issues.
+        
+        Args:
+            target: Image name, directory path, or file path
+            
+        Returns:
+            Scan results dictionary
+        """
+        started_at = datetime.utcnow()
+        self.clear_findings()
+        
+        self._scan_logger = ScanLogger("container", target)
+        self._scan_logger.start()
+        
+        try:
+            # Determine target type
+            scan_target = self._identify_target(target)
+            self._debug_log(f"Target type: {scan_target.target_type}")
+            
+            if self.show_progress:
+                self._progress = ScanProgress(description="Container Scan")
+                self._progress.__enter__()
+            
+            try:
+                if scan_target.target_type == "image":
+                    await self._scan_image(scan_target)
+                elif scan_target.target_type == "dockerfile":
+                    await self._scan_dockerfile(scan_target)
+                elif scan_target.target_type == "k8s_manifest":
+                    await self._scan_k8s_manifest(scan_target)
+                elif scan_target.target_type == "directory":
+                    await self._scan_directory(scan_target)
+                else:
+                    raise ScanError(f"Unknown target type: {scan_target.target_type}")
+                    
+            finally:
+                if self._progress:
+                    self._progress.__exit__(None, None, None)
+                    if self.show_progress:
+                        self._progress.print_summary()
+                    self._progress = None
+            
+            result = self.create_result(
+                target=target,
+                started_at=started_at,
+                metadata={
+                    "target_type": scan_target.target_type,
+                    "trivy_available": self._trivy_available,
+                    **self._stats,
+                },
+            )
+            
+            self._scan_logger.end(len(self._findings))
+            return result.to_dict()
+            
+        except Exception as e:
+            self._scan_logger.error(f"Container scan failed: {e}", e)
+            raise ScanError(f"Container scan failed: {e}")
+    
+    def _identify_target(self, target: str) -> ContainerScanTarget:
+        """Identify the type of scan target."""
+        path = Path(target)
+        
+        # Check if it's a file
+        if path.is_file():
+            if path.name.lower() in ("dockerfile", "containerfile") or \
+               path.name.lower().startswith("dockerfile"):
+                return ContainerScanTarget("dockerfile", str(path), path.name)
+            
+            # Check for K8s manifest
+            if path.suffix.lower() in (".yaml", ".yml", ".json"):
+                content = path.read_text()
+                if any(kw in content for kw in self.K8S_KEYWORDS):
+                    return ContainerScanTarget("k8s_manifest", str(path), path.name)
+            
+            return ContainerScanTarget("file", str(path), path.name)
+        
+        # Check if it's a directory
+        if path.is_dir():
+            return ContainerScanTarget("directory", str(path), path.name)
+        
+        # Assume it's a container image reference
+        return ContainerScanTarget("image", target, target)
+    
