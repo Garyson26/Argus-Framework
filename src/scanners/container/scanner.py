@@ -319,3 +319,89 @@ class ContainerScanner(BaseScanner):
         # Assume it's a container image reference
         return ContainerScanTarget("image", target, target)
     
+    def _debug_log(self, message: str) -> None:
+        """Log debug message."""
+        if self.debug:
+            logger.debug(f"[CONTAINER] {message}")
+    
+    async def _scan_image(self, target: ContainerScanTarget) -> None:
+        """Scan container image using Trivy."""
+        if not self.use_trivy or not self._trivy_available:
+            self._debug_log("Trivy not available, skipping image scan")
+            self.add_finding(Finding(
+                rule_id="CONTAINER-NO-TRIVY",
+                severity=Severity.INFO,
+                title="Image Scanning Unavailable",
+                description=f"Trivy not installed; cannot scan image {target.path}",
+                resource_id=target.path,
+                resource_type="Container::Image",
+                suggestion="Install Trivy for container image vulnerability scanning",
+            ))
+            return
+        
+        self._debug_log(f"Scanning image with Trivy: {target.path}")
+        self._stats["images_scanned"] += 1
+        
+        try:
+            # Run Trivy scan
+            result = subprocess.run(
+                [
+                    "trivy", "image",
+                    "--format", "json",
+                    "--severity", self.trivy_severity,
+                    target.path,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout
+            )
+            
+            if result.returncode != 0:
+                self._debug_log(f"Trivy error: {result.stderr}")
+                return
+            
+            # Parse results
+            trivy_results = json.loads(result.stdout)
+            await self._process_trivy_results(trivy_results, target)
+            
+        except subprocess.TimeoutExpired:
+            self._debug_log("Trivy scan timed out")
+        except json.JSONDecodeError as e:
+            self._debug_log(f"Failed to parse Trivy output: {e}")
+        except Exception as e:
+            self._debug_log(f"Error running Trivy: {e}")
+    
+    async def _process_trivy_results(
+        self,
+        results: dict,
+        target: ContainerScanTarget,
+    ) -> None:
+        """Process Trivy scan results."""
+        for result in results.get("Results", []):
+            for vuln in result.get("Vulnerabilities", []):
+                self._stats["vulnerabilities_found"] += 1
+                
+                severity_map = {
+                    "CRITICAL": Severity.CRITICAL,
+                    "HIGH": Severity.HIGH,
+                    "MEDIUM": Severity.MEDIUM,
+                    "LOW": Severity.LOW,
+                    "UNKNOWN": Severity.INFO,
+                }
+                
+                self.add_finding(Finding(
+                    rule_id=f"VULN-{vuln.get('VulnerabilityID', 'UNKNOWN')}",
+                    severity=severity_map.get(vuln.get("Severity", "UNKNOWN"), Severity.INFO),
+                    title=f"Vulnerability: {vuln.get('VulnerabilityID', 'Unknown')}",
+                    description=vuln.get("Description", "No description available")[:500],
+                    resource_id=target.path,
+                    resource_type="Container::Image",
+                    suggestion=f"Upgrade {vuln.get('PkgName', 'package')} from {vuln.get('InstalledVersion', 'unknown')} to {vuln.get('FixedVersion', 'latest')}",
+                    metadata={
+                        "package": vuln.get("PkgName"),
+                        "installed_version": vuln.get("InstalledVersion"),
+                        "fixed_version": vuln.get("FixedVersion"),
+                        "cvss_score": vuln.get("CVSS", {}).get("nvd", {}).get("V3Score"),
+                    },
+                ))
+    
