@@ -87,3 +87,22 @@ class SecretScanError(ScanError):
         super().__init__(message, scan_type="secret", details=details)
 
 
+class IaCScanError(ScanError):
+    """Raised when IaC scanning fails."""
+
+    def __init__(self, message: str, details: dict | None = None):
+        super().__init__(message, scan_type="iac", details=details)
+
+
+class CloudScanError(ScanError):
+    """Raised when cloud scanning fails."""
+
+    def __init__(self, message: str, details: dict | None = None):
+        super().__init__(message, scan_type="cloud", details=details)
+
+
+class IAMAnalysisError(ScanError):
+    """Raised when IAM analysis fails."""
+
+    def __init__(self, message: str, details: dict | None = None):
+        super().__init__(message, scan_type="iam", details=details)
