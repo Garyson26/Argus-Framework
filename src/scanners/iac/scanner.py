@@ -278,3 +278,64 @@ class IaCScanner(BaseScanner):
         else:
             self._parse_framework_results(results)
 
+    def _parse_framework_results(self, results: dict) -> None:
+        """Parse results for a single framework."""
+        check_results = results.get("results", results)
+        
+        # Count stats
+        passed = check_results.get("passed_checks", [])
+        failed = check_results.get("failed_checks", [])
+        skipped = check_results.get("skipped_checks", [])
+        
+        self._stats["checks_passed"] += len(passed)
+        self._stats["checks_failed"] += len(failed)
+        self._stats["checks_skipped"] += len(skipped)
+        
+        # Process failed checks
+        for check in failed:
+            self._stats["files_scanned"] += 1
+            
+            # Map severity
+            severity_str = check.get("severity", check.get("check_result", {}).get("severity", "MEDIUM"))
+            severity = self.SEVERITY_MAP.get(severity_str.upper(), Severity.MEDIUM)
+            
+            # Create finding
+            finding = Finding(
+                rule_id=check.get("check_id", "UNKNOWN"),
+                severity=severity,
+                title=check.get("check_name", "Unknown Check"),
+                description=self._build_description(check),
+                file_path=check.get("file_path", ""),
+                line_number=check.get("file_line_range", [0])[0] if check.get("file_line_range") else None,
+                resource_id=check.get("resource", ""),
+                resource_type=check.get("resource_type", ""),
+                suggestion=check.get("guideline", "Review and fix the configuration"),
+                metadata={
+                    "check_type": check.get("check_type", ""),
+                    "bc_check_id": check.get("bc_check_id", ""),
+                    "evaluations": check.get("evaluations"),
+                    "code_block": check.get("code_block"),
+                },
+            )
+            
+            self.add_finding(finding)
+            self._scan_logger.finding(severity.value, check.get("check_name", ""), check.get("file_path", ""))
+
+    def _build_description(self, check: dict) -> str:
+        """Build a description from check result."""
+        parts = []
+        
+        if check.get("check_name"):
+            parts.append(check["check_name"])
+        
+        if check.get("resource"):
+            parts.append(f"Resource: {check['resource']}")
+        
+        if check.get("file_path"):
+            line_range = check.get("file_line_range", [])
+            if line_range:
+                parts.append(f"Location: {check['file_path']}:{line_range[0]}-{line_range[-1]}")
+            else:
+                parts.append(f"Location: {check['file_path']}")
+        
+        return " | ".join(parts)
