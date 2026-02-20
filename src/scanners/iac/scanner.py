@@ -182,3 +182,160 @@ class IaCScanner(BaseScanner):
         
         return "terraform"  # Default
 
+    async def _run_checkov(self, target_path: Path, framework: str) -> dict:
+        """
+        Run Checkov on the target path.
+        
+        Args:
+            target_path: Path to scan
+            framework: IaC framework
+            
+        Returns:
+            Checkov JSON output
+        """
+        # Build command
+        cmd = [
+            "checkov",
+            "-o", "json",
+            "--quiet",
+            "--compact",
+        ]
+        
+        # Add framework
+        framework_flag = {
+            "terraform": "--framework", 
+            "cloudformation": "--framework",
+            "serverless": "--framework",
+            "kubernetes": "--framework",
+        }
+        
+        checkov_framework = {
+            "terraform": "terraform",
+            "cloudformation": "cloudformation",
+            "serverless": "serverless",
+            "kubernetes": "kubernetes",
+        }
+        
+        cmd.extend([framework_flag.get(framework, "--framework"), 
+                    checkov_framework.get(framework, "all")])
+        
+        # Add target
+        if target_path.is_file():
+            cmd.extend(["--file", str(target_path)])
+        else:
+            cmd.extend(["--directory", str(target_path)])
+        
+        # Add skip checks
+        if self.skip_checks:
+            cmd.extend(["--skip-check", ",".join(self.skip_checks)])
+        
+        # Add custom rules
+        if self.custom_rules_path:
+            cmd.extend(["--external-checks-dir", self.custom_rules_path])
+        
+        self._debug_log(f"Running command: {' '.join(cmd)}")
+        
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=600,  # 10 minute timeout
+            )
+            
+            # Checkov returns non-zero on findings
+            output = result.stdout
+            
+            if not output:
+                self._debug_log(f"Checkov stderr: {result.stderr}")
+                return {"results": {"passed_checks": [], "failed_checks": [], "skipped_checks": []}}
+            
+            # Parse JSON output
+            try:
+                return json.loads(output)
+            except json.JSONDecodeError:
+                # Sometimes Checkov returns multiple JSON objects
+                lines = output.strip().split('\n')
+                for line in lines:
+                    try:
+                        return json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                
+                raise IaCScanError("Failed to parse Checkov output")
+                
+        except subprocess.TimeoutExpired:
+            raise IaCScanError("Checkov scan timed out")
+        except FileNotFoundError:
+            raise IaCScanError("Checkov is not installed. Install with: pip install checkov")
+
+    def _parse_checkov_results(self, results: dict) -> None:
+        """Parse Checkov results and create findings."""
+        # Handle both single and multi-framework results
+        if isinstance(results, list):
+            for framework_result in results:
+                self._parse_framework_results(framework_result)
+        else:
+            self._parse_framework_results(results)
+
+    def _parse_framework_results(self, results: dict) -> None:
+        """Parse results for a single framework."""
+        check_results = results.get("results", results)
+        
+        # Count stats
+        passed = check_results.get("passed_checks", [])
+        failed = check_results.get("failed_checks", [])
+        skipped = check_results.get("skipped_checks", [])
+        
+        self._stats["checks_passed"] += len(passed)
+        self._stats["checks_failed"] += len(failed)
+        self._stats["checks_skipped"] += len(skipped)
+        
+        # Process failed checks
+        for check in failed:
+            self._stats["files_scanned"] += 1
+            
+            # Map severity
+            severity_str = check.get("severity", check.get("check_result", {}).get("severity", "MEDIUM"))
+            severity = self.SEVERITY_MAP.get(severity_str.upper(), Severity.MEDIUM)
+            
+            # Create finding
+            finding = Finding(
+                rule_id=check.get("check_id", "UNKNOWN"),
+                severity=severity,
+                title=check.get("check_name", "Unknown Check"),
+                description=self._build_description(check),
+                file_path=check.get("file_path", ""),
+                line_number=check.get("file_line_range", [0])[0] if check.get("file_line_range") else None,
+                resource_id=check.get("resource", ""),
+                resource_type=check.get("resource_type", ""),
+                suggestion=check.get("guideline", "Review and fix the configuration"),
+                metadata={
+                    "check_type": check.get("check_type", ""),
+                    "bc_check_id": check.get("bc_check_id", ""),
+                    "evaluations": check.get("evaluations"),
+                    "code_block": check.get("code_block"),
+                },
+            )
+            
+            self.add_finding(finding)
+            self._scan_logger.finding(severity.value, check.get("check_name", ""), check.get("file_path", ""))
+
+    def _build_description(self, check: dict) -> str:
+        """Build a description from check result."""
+        parts = []
+        
+        if check.get("check_name"):
+            parts.append(check["check_name"])
+        
+        if check.get("resource"):
+            parts.append(f"Resource: {check['resource']}")
+        
+        if check.get("file_path"):
+            line_range = check.get("file_line_range", [])
+            if line_range:
+                parts.append(f"Location: {check['file_path']}:{line_range[0]}-{line_range[-1]}")
+            else:
+                parts.append(f"Location: {check['file_path']}")
+        
+        return " | ".join(parts)
