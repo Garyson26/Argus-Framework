@@ -46,3 +46,42 @@ class ReportGenerator:
         # Ensure output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
+    def generate(
+        self,
+        scan_results: dict[str, Any],
+        report_name: Optional[str] = None,
+        formats: Optional[list[str]] = None,
+    ) -> list[Path]:
+        """
+        Generate reports from scan results.
+        
+        Args:
+            scan_results: Dictionary containing scan results
+            report_name: Optional name for the report
+            formats: List of formats to generate
+            
+        Returns:
+            List of paths to generated reports
+        """
+        formats = formats or [self.report_format]
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        report_name = report_name or f"argus_report_{timestamp}"
+        
+        generated = []
+        
+        for fmt in formats:
+            if fmt == "json":
+                path = self._generate_json(scan_results, report_name)
+            elif fmt == "markdown":
+                path = self._generate_markdown(scan_results, report_name)
+            elif fmt == "html":
+                path = self._generate_html(scan_results, report_name)
+            else:
+                logger.warning(f"Unknown format: {fmt}")
+                continue
+            
+            generated.append(path)
+            logger.info(f"Generated report: {path}")
+        
+        return generated
+
