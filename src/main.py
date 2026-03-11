@@ -485,3 +485,13 @@ def show_config() -> None:
     table.add_row("Report Output Dir", settings.report_output_dir)
     table.add_row("Report Format", settings.report_format)
     
+    console.print(table)
+
+
+@app.command("init-db")
+def init_database() -> None:
+    """
+    🗄️ Initialize the database (create tables).
+    """
+    console.print("[cyan]Initializing database...[/]")
+    
