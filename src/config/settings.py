@@ -112,3 +112,24 @@ class Settings(BaseSettings):
     report_output_dir: str = "./reports"
     report_format: str = "json"  # json, markdown, html
 
+    @field_validator("log_level")
+    @classmethod
+    def validate_log_level(cls, v: str) -> str:
+        """Validate log level is valid."""
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        v_upper = v.upper()
+        if v_upper not in valid_levels:
+            raise ValueError(f"log_level must be one of {valid_levels}")
+        return v_upper
+
+    @field_validator("report_format")
+    @classmethod
+    def validate_report_format(cls, v: str) -> str:
+        """Validate report format."""
+        valid_formats = {"json", "markdown", "html"}
+        v_lower = v.lower()
+        if v_lower not in valid_formats:
+            raise ValueError(f"report_format must be one of {valid_formats}")
+        return v_lower
+
+
