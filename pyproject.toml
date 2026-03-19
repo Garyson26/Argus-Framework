@@ -97,3 +97,31 @@ Documentation = "https://github.com/Garyson26/Argus-Framework#readme"
 Repository = "https://github.com/Garyson26/Argus-Framework"
 Issues = "https://github.com/Garyson26/Argus-Framework/issues"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | migrations
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["src"]
+skip = ["migrations", ".venv"]
+
