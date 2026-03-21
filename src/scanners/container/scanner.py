@@ -405,3 +405,43 @@ class ContainerScanner(BaseScanner):
                     },
                 ))
     
+    async def _scan_dockerfile(self, target: ContainerScanTarget) -> None:
+        """Scan Dockerfile for security issues."""
+        self._debug_log(f"Scanning Dockerfile: {target.path}")
+        self._stats["dockerfiles_scanned"] += 1
+        
+        try:
+            content = Path(target.path).read_text()
+            lines = content.split("\n")
+            
+            for check_id, check in DOCKERFILE_CHECKS.items():
+                if "pattern" in check:
+                    pattern = re.compile(check["pattern"], re.IGNORECASE | re.MULTILINE)
+                    for i, line in enumerate(lines, 1):
+                        if pattern.search(line):
+                            self.add_finding(Finding(
+                                rule_id=f"DOCKERFILE-{check_id.upper()}",
+                                severity=check["severity"],
+                                title=check["title"],
+                                description=check["description"],
+                                file_path=target.path,
+                                line_number=i,
+                                suggestion=check["suggestion"],
+                            ))
+                            
+                elif "anti_pattern" in check:
+                    # Check for absence of pattern
+                    anti_pattern = re.compile(check["anti_pattern"], re.IGNORECASE | re.MULTILINE)
+                    if not anti_pattern.search(content):
+                        self.add_finding(Finding(
+                            rule_id=f"DOCKERFILE-{check_id.upper()}",
+                            severity=check["severity"],
+                            title=check["title"],
+                            description=check["description"],
+                            file_path=target.path,
+                            suggestion=check["suggestion"],
+                        ))
+                        
+        except Exception as e:
+            self._debug_log(f"Error scanning Dockerfile: {e}")
+    
