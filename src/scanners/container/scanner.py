@@ -445,3 +445,57 @@ class ContainerScanner(BaseScanner):
         except Exception as e:
             self._debug_log(f"Error scanning Dockerfile: {e}")
     
+    async def _scan_k8s_manifest(self, target: ContainerScanTarget) -> None:
+        """Scan Kubernetes manifest for security issues."""
+        self._debug_log(f"Scanning K8s manifest: {target.path}")
+        self._stats["manifests_scanned"] += 1
+        
+        try:
+            content = Path(target.path).read_text()
+            
+            for check_id, check in K8S_SECURITY_CHECKS.items():
+                pattern = re.compile(check["pattern"], re.IGNORECASE | re.MULTILINE)
+                matches = list(pattern.finditer(content))
+                
+                for match in matches:
+                    # Find line number
+                    line_num = content[:match.start()].count("\n") + 1
+                    
+                    self.add_finding(Finding(
+                        rule_id=f"K8S-{check_id.upper()}",
+                        severity=check["severity"],
+                        title=check["title"],
+                        description=check["description"],
+                        file_path=target.path,
+                        line_number=line_num,
+                        suggestion=check["suggestion"],
+                    ))
+                    
+        except Exception as e:
+            self._debug_log(f"Error scanning K8s manifest: {e}")
+    
+    async def _scan_directory(self, target: ContainerScanTarget) -> None:
+        """Scan directory for Dockerfiles and K8s manifests."""
+        directory = Path(target.path)
+        
+        # Find Dockerfiles
+        if self.scan_dockerfiles:
+            for dockerfile in directory.rglob("Dockerfile*"):
+                if dockerfile.is_file():
+                    await self._scan_dockerfile(
+                        ContainerScanTarget("dockerfile", str(dockerfile), dockerfile.name)
+                    )
+        
+        # Find K8s manifests
+        if self.scan_k8s:
+            for pattern in self.K8S_PATTERNS:
+                for manifest in directory.rglob(pattern):
+                    if manifest.is_file():
+                        try:
+                            content = manifest.read_text()
+                            if any(kw in content for kw in self.K8S_KEYWORDS):
+                                await self._scan_k8s_manifest(
+                                    ContainerScanTarget("k8s_manifest", str(manifest), manifest.name)
+                                )
+                        except Exception:
+                            continue
