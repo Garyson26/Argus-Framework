@@ -56,3 +56,54 @@ def run_secret_scan(
     """
     Run secret scan as async task.
     
+    Args:
+        target_path: Path to scan for secrets
+        scan_git_history: Whether to scan git history
+        max_commits: Maximum commits to scan
+        entropy_threshold: Entropy threshold for detection
+        
+    Returns:
+        Scan results dictionary
+    """
+    from src.scanners.secrets.scanner import SecretScanner
+    
+    self.update_state(state="SCANNING", meta={"target": target_path})
+    
+    scanner = SecretScanner(
+        scan_git_history=scan_git_history,
+        max_commits=max_commits,
+        entropy_threshold=entropy_threshold,
+    )
+    
+    result = run_async(scanner.scan(target_path))
+    return result
+
+
+@celery_app.task(bind=True, name="argus.tasks.cloud_scan")
+def run_cloud_scan(
+    self,
+    profile: str = None,
+    regions: list[str] = None,
+    services: list[str] = None,
+) -> dict[str, Any]:
+    """
+    Run AWS cloud scan as async task.
+    
+    Args:
+        profile: AWS profile name
+        regions: List of regions to scan
+        services: List of services to scan
+        
+    Returns:
+        Scan results dictionary
+    """
+    from src.scanners.aws_cloud.scanner import AWSCloudScanner
+    
+    self.update_state(state="SCANNING", meta={"profile": profile or "default"})
+    
+    scanner = AWSCloudScanner(
+        profile=profile,
+        regions=regions,
+        services=services,
+    )
+    
