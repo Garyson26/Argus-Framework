@@ -107,3 +107,68 @@ def run_cloud_scan(
         services=services,
     )
     
+    result = run_async(scanner.scan())
+    return result
+
+
+@celery_app.task(bind=True, name="argus.tasks.iac_scan")
+def run_iac_scan(
+    self,
+    target_path: str,
+    framework: str = None,
+    skip_checks: list[str] = None,
+) -> dict[str, Any]:
+    """
+    Run IaC scan as async task.
+    
+    Args:
+        target_path: Path to IaC files
+        framework: IaC framework
+        skip_checks: Checks to skip
+        
+    Returns:
+        Scan results dictionary
+    """
+    from src.scanners.iac.scanner import IaCSCanner
+    
+    self.update_state(state="SCANNING", meta={"target": target_path})
+    
+    scanner = IaCSCanner(
+        framework=framework,
+        skip_checks=skip_checks,
+    )
+    
+    result = run_async(scanner.scan(target_path))
+    return result
+
+
+@celery_app.task(bind=True, name="argus.tasks.iam_analyze")
+def run_iam_analysis(
+    self,
+    profile: str = None,
+    check_escalation: bool = True,
+    check_unused: bool = True,
+) -> dict[str, Any]:
+    """
+    Run IAM analysis as async task.
+    
+    Args:
+        profile: AWS profile name
+        check_escalation: Check for escalation paths
+        check_unused: Check for unused permissions
+        
+    Returns:
+        Analysis results dictionary
+    """
+    from src.scanners.iam_analyzer.analyzer import IAMAnalyzer
+    
+    self.update_state(state="ANALYZING", meta={"profile": profile or "default"})
+    
+    analyzer = IAMAnalyzer(
+        profile=profile,
+        check_escalation=check_escalation,
+        check_unused=check_unused,
+    )
+    
+    result = run_async(analyzer.analyze())
+    return result
