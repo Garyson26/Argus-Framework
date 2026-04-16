@@ -52,3 +52,58 @@ services:
       timeout: 10s
       retries: 5
 
+  # Argus Application
+  argus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: argus-app
+    environment:
+      ARGUS_POSTGRES_HOST: postgres
+      ARGUS_POSTGRES_PORT: 5432
+      ARGUS_POSTGRES_USER: argus
+      ARGUS_POSTGRES_PASSWORD: argus_secret
+      ARGUS_POSTGRES_DB: argus
+      ARGUS_REDIS_HOST: redis
+      ARGUS_REDIS_PORT: 6379
+      ARGUS_NEO4J_URI: bolt://neo4j:7687
+      ARGUS_NEO4J_USER: neo4j
+      ARGUS_NEO4J_PASSWORD: neo4j_secret
+      ARGUS_DEBUG: "false"
+    volumes:
+      - ./reports:/app/reports
+      - ~/.aws:/root/.aws:ro  # Mount AWS credentials
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: argus-worker
+    command: celery -A src.worker.tasks worker --loglevel=info
+    environment:
+      ARGUS_POSTGRES_HOST: postgres
+      ARGUS_POSTGRES_PORT: 5432
+      ARGUS_POSTGRES_USER: argus
+      ARGUS_POSTGRES_PASSWORD: argus_secret
+      ARGUS_POSTGRES_DB: argus
+      ARGUS_REDIS_HOST: redis
+      ARGUS_REDIS_PORT: 6379
+      ARGUS_NEO4J_URI: bolt://neo4j:7687
+      ARGUS_NEO4J_USER: neo4j
+      ARGUS_NEO4J_PASSWORD: neo4j_secret
+    volumes:
+      - ~/.aws:/root/.aws:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
