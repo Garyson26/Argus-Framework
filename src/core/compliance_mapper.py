@@ -67,3 +67,107 @@ class ComplianceMapping:
         controls: List of mapped compliance controls
     """
     
+    rule_id: str
+    controls: list[ComplianceControl] = field(default_factory=list)
+
+
+# =============================================================================
+# COMPLIANCE MAPPINGS DATABASE
+# =============================================================================
+
+# CIS AWS Foundations Benchmark mappings
+CIS_AWS_MAPPINGS = {
+    # IAM Controls
+    "IAM-NO-PASSWORD-POLICY": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 1.5",
+        title="Ensure IAM password policy requires at least one uppercase letter",
+        description="IAM password policy should require uppercase letters",
+        severity=Severity.MEDIUM,
+        category="Identity and Access Management",
+    ),
+    "IAM-WEAK-PASSWORD-POLICY": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 1.5-1.11",
+        title="IAM Password Policy Controls",
+        description="Multiple password policy requirements not met",
+        severity=Severity.MEDIUM,
+        category="Identity and Access Management",
+    ),
+    "IAM-USER-NO-MFA": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 1.10",
+        title="Ensure multi-factor authentication (MFA) is enabled for all IAM users",
+        description="MFA adds an extra layer of protection",
+        severity=Severity.HIGH,
+        category="Identity and Access Management",
+    ),
+    "IAM-ACCESS-KEY-OLD": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 1.14",
+        title="Ensure access keys are rotated every 90 days or less",
+        description="Regular key rotation limits exposure window",
+        severity=Severity.MEDIUM,
+        category="Identity and Access Management",
+    ),
+    
+    # S3 Controls
+    "S3-NO-PUBLIC-ACCESS-BLOCK": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 2.1.5",
+        title="Ensure S3 Bucket has 'Block Public Access' enabled",
+        description="Block public access to prevent data exposure",
+        severity=Severity.HIGH,
+        category="Storage",
+    ),
+    "S3-PUBLIC-ACCESS-BLOCK": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 2.1.5",
+        title="Ensure S3 Bucket has 'Block Public Access' enabled",
+        description="Block public access to prevent data exposure",
+        severity=Severity.HIGH,
+        category="Storage",
+    ),
+    "S3-NO-ENCRYPTION": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 2.1.1",
+        title="Ensure S3 Bucket has server-side encryption enabled",
+        description="Enable encryption at rest for data protection",
+        severity=Severity.MEDIUM,
+        category="Storage",
+    ),
+    "S3-NO-LOGGING": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 3.6",
+        title="Ensure S3 bucket access logging is enabled",
+        description="Access logging provides audit trail",
+        severity=Severity.LOW,
+        category="Logging",
+    ),
+    
+    # EC2/Network Controls
+    "EC2-SG-OPEN-SENSITIVE-PORT": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 5.2",
+        title="Ensure no security groups allow ingress from 0.0.0.0/0 to SSH",
+        description="Restrict SSH access to known IP ranges",
+        severity=Severity.CRITICAL,
+        category="Networking",
+    ),
+    "EC2-SG-OPEN-TO-WORLD": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 5.3",
+        title="Ensure no security groups allow unrestricted ingress",
+        description="Limit network exposure to required sources",
+        severity=Severity.MEDIUM,
+        category="Networking",
+    ),
+    "VPC-NO-FLOW-LOGS": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 3.9",
+        title="Ensure VPC flow logging is enabled",
+        description="Flow logs enable network traffic analysis",
+        severity=Severity.MEDIUM,
+        category="Logging",
+    ),
+    
