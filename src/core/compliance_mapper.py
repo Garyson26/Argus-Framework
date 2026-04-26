@@ -171,3 +171,95 @@ CIS_AWS_MAPPINGS = {
         category="Logging",
     ),
     
+    # CloudTrail Controls
+    "CLOUDTRAIL-NOT-ENABLED": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 3.1",
+        title="Ensure CloudTrail is enabled in all regions",
+        description="CloudTrail provides API audit logging",
+        severity=Severity.CRITICAL,
+        category="Logging",
+    ),
+    "CLOUDTRAIL-NOT-MULTIREGION": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 3.1",
+        title="Ensure CloudTrail is enabled in all regions",
+        description="Multi-region logging captures all API activity",
+        severity=Severity.MEDIUM,
+        category="Logging",
+    ),
+    "CLOUDTRAIL-NO-LOG-VALIDATION": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 3.2",
+        title="Ensure CloudTrail log file validation is enabled",
+        description="Log validation detects log tampering",
+        severity=Severity.MEDIUM,
+        category="Logging",
+    ),
+    
+    # RDS Controls
+    "RDS-PUBLIC-ACCESS": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 2.3.2",
+        title="Ensure RDS instances are not publicly accessible",
+        description="Database should not be exposed to internet",
+        severity=Severity.CRITICAL,
+        category="Database",
+    ),
+    "RDS-NO-ENCRYPTION": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 2.3.1",
+        title="Ensure RDS encryption is enabled",
+        description="Encrypt database storage at rest",
+        severity=Severity.HIGH,
+        category="Database",
+    ),
+    
+    # EBS Controls
+    "EC2-EBS-NOT-ENCRYPTED": ComplianceControl(
+        framework=ComplianceFramework.CIS_AWS,
+        control_id="CIS 2.2.1",
+        title="Ensure EBS volume encryption is enabled",
+        description="Encrypt EBS volumes for data protection",
+        severity=Severity.MEDIUM,
+        category="Storage",
+    ),
+}
+
+# PCI DSS mappings
+PCI_DSS_MAPPINGS = {
+    "SECRET-AWS_ACCESS_KEY": ComplianceControl(
+        framework=ComplianceFramework.PCI_DSS,
+        control_id="PCI 3.4",
+        title="Render PAN unreadable anywhere it is stored",
+        description="Sensitive authentication data must be protected",
+        severity=Severity.CRITICAL,
+        category="Protect Cardholder Data",
+    ),
+    "SECRET-PRIVATE_KEY": ComplianceControl(
+        framework=ComplianceFramework.PCI_DSS,
+        control_id="PCI 3.5",
+        title="Protect cryptographic keys used for encryption",
+        description="Private keys must be securely stored",
+        severity=Severity.CRITICAL,
+        category="Protect Cardholder Data",
+    ),
+    "RDS-PUBLIC-ACCESS": ComplianceControl(
+        framework=ComplianceFramework.PCI_DSS,
+        control_id="PCI 1.3",
+        title="Prohibit direct public access to the CDE",
+        description="Databases should not be publicly accessible",
+        severity=Severity.CRITICAL,
+        category="Build Secure Network",
+    ),
+    "EC2-SG-OPEN-SENSITIVE-PORT": ComplianceControl(
+        framework=ComplianceFramework.PCI_DSS,
+        control_id="PCI 1.2",
+        title="Restrict connections between untrusted networks",
+        description="Limit inbound traffic to necessary services",
+        severity=Severity.CRITICAL,
+        category="Build Secure Network",
+    ),
+}
+
+
