@@ -263,3 +263,54 @@ PCI_DSS_MAPPINGS = {
 }
 
 
+@dataclass
+class ComplianceReport:
+    """
+    Compliance assessment report.
+    
+    Attributes:
+        framework: Target compliance framework
+        total_controls: Total controls in framework
+        passed_controls: Controls with no findings
+        failed_controls: Controls with findings
+        score: Compliance score (0-100)
+        findings_by_control: Findings grouped by control
+    """
+    
+    framework: ComplianceFramework
+    total_controls: int
+    passed_controls: int
+    failed_controls: int
+    score: float
+    findings_by_control: dict[str, list[Finding]] = field(default_factory=dict)
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "framework": self.framework.value,
+            "total_controls": self.total_controls,
+            "passed_controls": self.passed_controls,
+            "failed_controls": self.failed_controls,
+            "score": round(self.score, 2),
+            "findings_count": sum(len(f) for f in self.findings_by_control.values()),
+            "controls": {
+                ctrl: [f.to_dict() for f in findings]
+                for ctrl, findings in self.findings_by_control.items()
+            },
+        }
+
+
+class ComplianceMapper:
+    """
+    Maps findings to compliance framework controls.
+    
+    Provides compliance-focused analysis and reporting.
+    """
+    
+    def __init__(self):
+        """Initialize the compliance mapper."""
+        self._mappings: dict[ComplianceFramework, dict[str, ComplianceControl]] = {
+            ComplianceFramework.CIS_AWS: CIS_AWS_MAPPINGS,
+            ComplianceFramework.PCI_DSS: PCI_DSS_MAPPINGS,
+        }
+    
