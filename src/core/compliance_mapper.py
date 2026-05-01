@@ -314,3 +314,106 @@ class ComplianceMapper:
             ComplianceFramework.PCI_DSS: PCI_DSS_MAPPINGS,
         }
     
+    def get_controls_for_finding(
+        self,
+        finding: Finding,
+        frameworks: Optional[list[ComplianceFramework]] = None,
+    ) -> list[ComplianceControl]:
+        """
+        Get compliance controls related to a finding.
+        
+        Args:
+            finding: Security finding
+            frameworks: Limit to specific frameworks
+            
+        Returns:
+            List of related compliance controls
+        """
+        controls = []
+        frameworks = frameworks or list(self._mappings.keys())
+        
+        for framework in frameworks:
+            mapping = self._mappings.get(framework, {})
+            if finding.rule_id in mapping:
+                controls.append(mapping[finding.rule_id])
+        
+        return controls
+    
+    def generate_report(
+        self,
+        findings: list[Finding],
+        framework: ComplianceFramework,
+    ) -> ComplianceReport:
+        """
+        Generate compliance report for a framework.
+        
+        Args:
+            findings: List of security findings
+            framework: Target compliance framework
+            
+        Returns:
+            ComplianceReport object
+        """
+        mapping = self._mappings.get(framework, {})
+        all_control_ids = set(ctrl.control_id for ctrl in mapping.values())
+        
+        findings_by_control: dict[str, list[Finding]] = {}
+        failed_control_ids = set()
+        
+        for finding in findings:
+            if finding.rule_id in mapping:
+                control = mapping[finding.rule_id]
+                control_id = control.control_id
+                
+                if control_id not in findings_by_control:
+                    findings_by_control[control_id] = []
+                findings_by_control[control_id].append(finding)
+                failed_control_ids.add(control_id)
+        
+        total = len(all_control_ids)
+        failed = len(failed_control_ids)
+        passed = total - failed
+        score = (passed / total * 100) if total > 0 else 100.0
+        
+        return ComplianceReport(
+            framework=framework,
+            total_controls=total,
+            passed_controls=passed,
+            failed_controls=failed,
+            score=score,
+            findings_by_control=findings_by_control,
+        )
+    
+    def get_supported_frameworks(self) -> list[ComplianceFramework]:
+        """Get list of supported compliance frameworks."""
+        return list(self._mappings.keys())
+    
+    def add_mapping(
+        self,
+        framework: ComplianceFramework,
+        rule_id: str,
+        control: ComplianceControl,
+    ) -> None:
+        """
+        Add a custom compliance mapping.
+        
+        Args:
+            framework: Target framework
+            rule_id: Argus rule ID
+            control: Compliance control
+        """
+        if framework not in self._mappings:
+            self._mappings[framework] = {}
+        self._mappings[framework][rule_id] = control
+
+
+# Default mapper instance
+_default_mapper: Optional[ComplianceMapper] = None
+
+
+def get_compliance_mapper() -> ComplianceMapper:
+    """Get the default compliance mapper instance."""
+    global _default_mapper
+    if _default_mapper is None:
+        _default_mapper = ComplianceMapper()
+    return _default_mapper
