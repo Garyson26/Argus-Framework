@@ -151,3 +151,18 @@ argus cloud scan --profile production --regions us-east-1,us-west-2
 - `--services s3,ec2,iam`: Contextual scanning
 - `--fix`: Attempt auto-remediation (Use with caution!)
 
+### 🏗️ IaC Security
+Shift left by scanning your infrastructure code.
+
+```bash
+argus iac scan ./terraform-files
+```
+
+### 🕸️ IAM Analysis
+Visualize permission paths and find dangerous roles.
+
+```bash
+argus iam analyze --graph
+```
+*Note: Requires Neo4j service to be running.*
+
