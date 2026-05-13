@@ -61,3 +61,41 @@ class WebhookConfig:
     secret: str | None = None
 
 
+@dataclass 
+class NotificationPayload:
+    """
+    Notification content.
+    
+    Attributes:
+        title: Notification title
+        message: Message body
+        severity: Finding severity
+        scan_type: Type of scan
+        findings_count: Number of findings
+        critical_count: Critical findings count
+        high_count: High findings count
+        target: Scan target
+        timestamp: Notification time
+        metadata: Additional data
+    """
+    
+    title: str
+    message: str
+    severity: Severity
+    scan_type: str
+    findings_count: int
+    critical_count: int
+    high_count: int
+    target: str
+    timestamp: datetime
+    metadata: dict[str, Any] | None = None
+
+
+class NotificationService:
+    """
+    Notification service for sending alerts.
+    
+    Manages webhook configurations and sends notifications
+    to configured services.
+    """
+    
