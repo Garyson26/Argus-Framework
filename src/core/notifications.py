@@ -99,3 +99,114 @@ class NotificationService:
     to configured services.
     """
     
+    def __init__(self, webhooks: list[WebhookConfig] | None = None):
+        """
+        Initialize notification service.
+        
+        Args:
+            webhooks: List of webhook configurations
+        """
+        self.webhooks = webhooks or []
+        self._client = httpx.Client(timeout=30.0)
+    
+    def add_webhook(self, config: WebhookConfig) -> None:
+        """Add a webhook configuration."""
+        self.webhooks.append(config)
+    
+    async def notify_scan_complete(
+        self,
+        scan_results: dict[str, Any],
+        notify_all: bool = False,
+    ) -> list[dict[str, Any]]:
+        """
+        Send notifications for scan completion.
+        
+        Args:
+            scan_results: Scan result dictionary
+            notify_all: Send regardless of severity threshold
+            
+        Returns:
+            List of notification results
+        """
+        results = []
+        
+        # Build notification payload
+        critical = scan_results.get("severity_counts", {}).get("critical", 0)
+        high = scan_results.get("severity_counts", {}).get("high", 0)
+        total = scan_results.get("total_findings", 0)
+        
+        # Determine effective severity
+        if critical > 0:
+            severity = Severity.CRITICAL
+        elif high > 0:
+            severity = Severity.HIGH
+        else:
+            severity = Severity.MEDIUM
+        
+        payload = NotificationPayload(
+            title=f"Argus Scan Complete: {scan_results.get('scan_type', 'Unknown')}",
+            message=self._build_message(scan_results),
+            severity=severity,
+            scan_type=scan_results.get("scan_type", "unknown"),
+            findings_count=total,
+            critical_count=critical,
+            high_count=high,
+            target=scan_results.get("target", "unknown"),
+            timestamp=datetime.utcnow(),
+            metadata=scan_results.get("metadata"),
+        )
+        
+        # Send to enabled webhooks
+        for webhook in self.webhooks:
+            if not webhook.enabled:
+                continue
+            
+            # Check severity threshold
+            if not notify_all:
+                if not self._meets_threshold(severity, webhook.min_severity):
+                    continue
+            
+            try:
+                result = await self._send_webhook(webhook, payload)
+                results.append({
+                    "webhook": webhook.name,
+                    "success": result,
+                    "type": webhook.webhook_type.value,
+                })
+            except Exception as e:
+                logger.error(f"Failed to send webhook {webhook.name}: {e}")
+                results.append({
+                    "webhook": webhook.name,
+                    "success": False,
+                    "error": str(e),
+                })
+        
+        return results
+    
+    def _meets_threshold(self, severity: Severity, threshold: Severity) -> bool:
+        """Check if severity meets or exceeds threshold."""
+        severity_order = [
+            Severity.INFO,
+            Severity.LOW,
+            Severity.MEDIUM,
+            Severity.HIGH,
+            Severity.CRITICAL,
+        ]
+        return severity_order.index(severity) >= severity_order.index(threshold)
+    
+    def _build_message(self, results: dict[str, Any]) -> str:
+        """Build notification message from results."""
+        counts = results.get("severity_counts", {})
+        lines = [
+            f"**Target**: {results.get('target', 'Unknown')}",
+            f"**Scan Type**: {results.get('scan_type', 'Unknown')}",
+            f"**Total Findings**: {results.get('total_findings', 0)}",
+            "",
+            "**Severity Breakdown**:",
+            f"  • Critical: {counts.get('critical', 0)}",
+            f"  • High: {counts.get('high', 0)}",
+            f"  • Medium: {counts.get('medium', 0)}",
+            f"  • Low: {counts.get('low', 0)}",
+        ]
+        return "\n".join(lines)
+    
