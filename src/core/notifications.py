@@ -210,3 +210,103 @@ class NotificationService:
         ]
         return "\n".join(lines)
     
+    async def _send_webhook(
+        self,
+        config: WebhookConfig,
+        payload: NotificationPayload,
+    ) -> bool:
+        """
+        Send notification to webhook.
+        
+        Args:
+            config: Webhook configuration
+            payload: Notification payload
+            
+        Returns:
+            True if successful
+        """
+        if config.webhook_type == WebhookType.SLACK:
+            return await self._send_slack(config, payload)
+        elif config.webhook_type == WebhookType.TEAMS:
+            return await self._send_teams(config, payload)
+        elif config.webhook_type == WebhookType.DISCORD:
+            return await self._send_discord(config, payload)
+        elif config.webhook_type == WebhookType.PAGERDUTY:
+            return await self._send_pagerduty(config, payload)
+        else:
+            return await self._send_generic(config, payload)
+    
+    async def _send_slack(
+        self,
+        config: WebhookConfig,
+        payload: NotificationPayload,
+    ) -> bool:
+        """Send Slack notification."""
+        color = self._severity_color(payload.severity, "slack")
+        
+        slack_payload = {
+            "attachments": [
+                {
+                    "color": color,
+                    "title": payload.title,
+                    "text": payload.message,
+                    "fields": [
+                        {
+                            "title": "Critical",
+                            "value": str(payload.critical_count),
+                            "short": True,
+                        },
+                        {
+                            "title": "High",
+                            "value": str(payload.high_count),
+                            "short": True,
+                        },
+                        {
+                            "title": "Total Findings",
+                            "value": str(payload.findings_count),
+                            "short": True,
+                        },
+                        {
+                            "title": "Target",
+                            "value": payload.target,
+                            "short": True,
+                        },
+                    ],
+                    "footer": "Argus Security Scanner",
+                    "ts": int(payload.timestamp.timestamp()),
+                }
+            ]
+        }
+        
+        return await self._http_post(config.url, slack_payload, config.headers)
+    
+    async def _send_teams(
+        self,
+        config: WebhookConfig,
+        payload: NotificationPayload,
+    ) -> bool:
+        """Send Microsoft Teams notification."""
+        color = self._severity_color(payload.severity, "teams")
+        
+        teams_payload = {
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "themeColor": color,
+            "summary": payload.title,
+            "sections": [
+                {
+                    "activityTitle": payload.title,
+                    "facts": [
+                        {"name": "Target", "value": payload.target},
+                        {"name": "Scan Type", "value": payload.scan_type},
+                        {"name": "Critical", "value": str(payload.critical_count)},
+                        {"name": "High", "value": str(payload.high_count)},
+                        {"name": "Total", "value": str(payload.findings_count)},
+                    ],
+                    "markdown": True,
+                }
+            ],
+        }
+        
+        return await self._http_post(config.url, teams_payload, config.headers)
+    
