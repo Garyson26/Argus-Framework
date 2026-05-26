@@ -310,3 +310,114 @@ class NotificationService:
         
         return await self._http_post(config.url, teams_payload, config.headers)
     
+    async def _send_discord(
+        self,
+        config: WebhookConfig,
+        payload: NotificationPayload,
+    ) -> bool:
+        """Send Discord notification."""
+        color = self._severity_color(payload.severity, "discord")
+        
+        discord_payload = {
+            "embeds": [
+                {
+                    "title": payload.title,
+                    "description": payload.message,
+                    "color": color,
+                    "fields": [
+                        {"name": "Critical", "value": str(payload.critical_count), "inline": True},
+                        {"name": "High", "value": str(payload.high_count), "inline": True},
+                        {"name": "Total", "value": str(payload.findings_count), "inline": True},
+                    ],
+                    "footer": {"text": "Argus Security Scanner"},
+                    "timestamp": payload.timestamp.isoformat(),
+                }
+            ]
+        }
+        
+        return await self._http_post(config.url, discord_payload, config.headers)
+    
+    async def _send_pagerduty(
+        self,
+        config: WebhookConfig,
+        payload: NotificationPayload,
+    ) -> bool:
+        """Send PagerDuty alert."""
+        severity_map = {
+            Severity.CRITICAL: "critical",
+            Severity.HIGH: "error",
+            Severity.MEDIUM: "warning",
+            Severity.LOW: "info",
+            Severity.INFO: "info",
+        }
+        
+        pd_payload = {
+            "routing_key": config.secret,
+            "event_action": "trigger",
+            "payload": {
+                "summary": payload.title,
+                "severity": severity_map.get(payload.severity, "warning"),
+                "source": "argus",
+                "custom_details": {
+                    "target": payload.target,
+                    "scan_type": payload.scan_type,
+                    "findings_count": payload.findings_count,
+                    "critical_count": payload.critical_count,
+                    "high_count": payload.high_count,
+                },
+            },
+        }
+        
+        return await self._http_post(config.url, pd_payload, config.headers)
+    
+    async def _send_generic(
+        self,
+        config: WebhookConfig,
+        payload: NotificationPayload,
+    ) -> bool:
+        """Send generic webhook notification."""
+        generic_payload = {
+            "event": "scan_complete",
+            "title": payload.title,
+            "message": payload.message,
+            "severity": payload.severity.value,
+            "scan_type": payload.scan_type,
+            "target": payload.target,
+            "findings": {
+                "total": payload.findings_count,
+                "critical": payload.critical_count,
+                "high": payload.high_count,
+            },
+            "timestamp": payload.timestamp.isoformat(),
+            "metadata": payload.metadata,
+        }
+        
+        return await self._http_post(config.url, generic_payload, config.headers)
+    
+    def _severity_color(self, severity: Severity, platform: str) -> str | int:
+        """Get color for severity by platform."""
+        colors = {
+            "slack": {
+                Severity.CRITICAL: "#dc3545",
+                Severity.HIGH: "#fd7e14",
+                Severity.MEDIUM: "#ffc107",
+                Severity.LOW: "#17a2b8",
+                Severity.INFO: "#6c757d",
+            },
+            "teams": {
+                Severity.CRITICAL: "dc3545",
+                Severity.HIGH: "fd7e14",
+                Severity.MEDIUM: "ffc107",
+                Severity.LOW: "17a2b8",
+                Severity.INFO: "6c757d",
+            },
+            "discord": {
+                Severity.CRITICAL: 0xdc3545,
+                Severity.HIGH: 0xfd7e14,
+                Severity.MEDIUM: 0xffc107,
+                Severity.LOW: 0x17a2b8,
+                Severity.INFO: 0x6c757d,
+            },
+        }
+        return colors.get(platform, {}).get(severity, "#6c757d")
+    
