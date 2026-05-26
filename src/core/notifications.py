@@ -421,3 +421,40 @@ class NotificationService:
         }
         return colors.get(platform, {}).get(severity, "#6c757d")
     
+    async def _http_post(
+        self,
+        url: str,
+        payload: dict,
+        headers: dict[str, str] | None = None,
+    ) -> bool:
+        """Send HTTP POST request."""
+        try:
+            default_headers = {"Content-Type": "application/json"}
+            if headers:
+                default_headers.update(headers)
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    url,
+                    json=payload,
+                    headers=default_headers,
+                )
+                response.raise_for_status()
+                return True
+                
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error sending webhook: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Error sending webhook: {e}")
+            return False
+    
+    def close(self) -> None:
+        """Close HTTP client."""
+        self._client.close()
+    
+    def __enter__(self) -> "NotificationService":
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
