@@ -495,3 +495,12 @@ def init_database() -> None:
     """
     console.print("[cyan]Initializing database...[/]")
     
+    from src.database.session import init_db
+    
+    asyncio.run(init_db())
+    
+    console.print("[green bold]✅ Database initialized successfully![/]")
+
+
+if __name__ == "__main__":
+    app()
