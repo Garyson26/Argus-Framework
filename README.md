@@ -166,3 +166,9 @@ argus iam analyze --graph
 ```
 *Note: Requires Neo4j service to be running.*
 
+---
+
+## 🏗️ Architecture
+
+The Argus framework is built for modularity and scalability.
+
