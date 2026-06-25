@@ -172,3 +172,20 @@ argus iam analyze --graph
 
 The Argus framework is built for modularity and scalability.
 
+```mermaid
+C4Context
+    title System Context Diagram for Argus
+
+    Person(user, "Security Auditor", "Uses Argus to audit cloud security.")
+    System(argus, "Argus Framework", "CLI tool for scanning secrets, cloud config, IaC, and IAM.")
+    
+    System_Ext(aws, "AWS Cloud", "Target environment for auditing.")
+    System_Ext(neo4j, "Neo4j Database", "Stores IAM graph relationships.")
+    System_Ext(postgres, "PostgreSQL", "Stores finding results and reports.")
+    
+    Rel(user, argus, "Runs CLI commands")
+    Rel(argus, aws, "Reads configuration via API")
+    Rel(argus, neo4j, "Queries/Updates Graph")
+    Rel(argus, postgres, "Persists Audit Data")
+```
+
