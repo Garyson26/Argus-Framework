@@ -88,3 +88,153 @@ Feature requests are welcome! Please provide:
 5. **Write tests** for your changes
 6. **Submit a pull request**
 
+---
+
+## 📤 Pull Request Process
+
+### Before Submitting
+
+- [ ] Update documentation if needed
+- [ ] Add tests for new functionality
+- [ ] Ensure all tests pass (`pytest`)
+- [ ] Run code formatters (`black`, `isort`)
+- [ ] Run type checker (`mypy src/`)
+- [ ] Run linter (`flake8 src/`)
+
+### PR Guidelines
+
+1. **Use a clear, descriptive title**
+2. **Reference related issues** using `Fixes #123` or `Closes #123`
+3. **Provide a detailed description** of your changes
+4. **Include screenshots** for UI changes
+5. **Keep PRs focused** - one feature/fix per PR
+
+### Review Process
+
+1. Maintainers will review your PR
+2. Address any requested changes
+3. Once approved, your PR will be merged
+4. Celebrate! 🎉
+
+---
+
+## 📝 Coding Standards
+
+### Python Style
+
+We use the following tools to maintain code quality:
+
+| Tool | Purpose | Command |
+|------|---------|---------|
+| **Black** | Code formatting | `black src/ tests/` |
+| **isort** | Import sorting | `isort src/ tests/` |
+| **flake8** | Linting | `flake8 src/` |
+| **mypy** | Type checking | `mypy src/` |
+
+### Code Guidelines
+
+```python
+# ✅ Good - Type hints and docstrings
+def scan_bucket(bucket_name: str, region: str = "us-east-1") -> dict:
+    """
+    Scan an S3 bucket for security misconfigurations.
+    
+    Args:
+        bucket_name: Name of the S3 bucket to scan
+        region: AWS region where the bucket is located
+        
+    Returns:
+        Dictionary containing scan results with findings
+    """
+    ...
+
+# ❌ Bad - No type hints or documentation
+def scan_bucket(bucket_name, region="us-east-1"):
+    ...
+```
+
+### Commit Messages
+
+Use clear, descriptive commit messages:
+
+```
+feat: add support for CloudWatch Logs scanning
+fix: resolve false positive in S3 public access detection
+docs: update installation instructions for Windows
+test: add unit tests for IAM analyzer module
+refactor: simplify secret pattern matching logic
+```
+
+---
+
+## 🧪 Testing Guidelines
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=src --cov-report=html
+
+# Run specific test file
+pytest tests/unit/test_secret_scanner.py -v
+
+# Run tests matching a pattern
+pytest -k "test_s3" -v
+```
+
+### Writing Tests
+
+```python
+import pytest
+from src.scanners.secrets import SecretScanner
+
+class TestSecretScanner:
+    """Tests for the secret scanning module."""
+    
+    def test_detect_aws_access_key(self):
+        """Should detect AWS access key in code."""
+        scanner = SecretScanner()
+        content = 'AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE"'
+        
+        findings = scanner.scan_content(content)
+        
+        assert len(findings) == 1
+        assert findings[0].pattern_name == "aws_access_key"
+```
+
+### Test Categories
+
+- `tests/unit/` - Unit tests for individual functions
+- `tests/integration/` - Integration tests with mocked AWS
+- `tests/e2e/` - End-to-end tests (requires Docker)
+
+---
+
+## 🏷️ Issue Labels
+
+| Label | Description |
+|-------|-------------|
+| `bug` | Something isn't working |
+| `enhancement` | New feature or request |
+| `documentation` | Improvements to docs |
+| `good first issue` | Good for newcomers |
+| `help wanted` | Extra attention needed |
+| `security` | Security-related issues |
+
+---
+
+## 💬 Getting Help
+
+- **GitHub Issues** - For bugs and feature requests
+- **Discussions** - For questions and ideas
+
+---
+
+<p align="center">
+  <strong>Thank you for contributing to Argus! 🛡️</strong>
+  <br>
+  <sub>Together, we make cloud security accessible to everyone.</sub>
+</p>
