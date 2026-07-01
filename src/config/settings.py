@@ -90,6 +90,7 @@ class Settings(BaseSettings):
     aws_secret_access_key: Optional[str] = None
     aws_session_token: Optional[str] = None
     aws_region: str = "us-east-1"
+    gcp_project_id: Optional[str] = None  # TODO gcp support
     aws_assume_role_arn: Optional[str] = None
 
     # Scanning Configuration
