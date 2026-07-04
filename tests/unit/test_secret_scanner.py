@@ -59,3 +59,112 @@ class TestEntropy:
         """Confidence should be 0.5 at threshold."""
         assert calculate_confidence(4.5, threshold=4.5) == 0.5
     
+    def test_calculate_confidence_above_threshold(self):
+        """Confidence should increase above threshold."""
+        confidence = calculate_confidence(5.5, threshold=4.5)
+        assert 0.5 < confidence <= 1.0
+
+
+class TestPatterns:
+    """Tests for secret patterns."""
+    
+    def test_get_all_patterns(self):
+        """Should return list of patterns."""
+        patterns = get_all_patterns()
+        assert len(patterns) > 0
+        assert all(isinstance(p, SecretPattern) for p in patterns)
+    
+    def test_get_patterns_by_type(self):
+        """Should filter patterns by type."""
+        aws_patterns = get_patterns_by_type(SecretType.AWS_ACCESS_KEY)
+        assert len(aws_patterns) > 0
+        assert all(p.secret_type == SecretType.AWS_ACCESS_KEY for p in aws_patterns)
+    
+    def test_aws_access_key_pattern(self):
+        """AWS access key pattern should match valid keys."""
+        patterns = get_patterns_by_type(SecretType.AWS_ACCESS_KEY)
+        test_key = "AKIAIOSFODNN7EXAMPLE"
+        
+        matched = False
+        for pattern in patterns:
+            if pattern.match(test_key):
+                matched = True
+                break
+        
+        assert matched
+    
+    def test_github_token_pattern(self):
+        """GitHub token pattern should match valid tokens."""
+        patterns = get_patterns_by_type(SecretType.GITHUB_TOKEN)
+        test_token = "ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890"
+        
+        matched = False
+        for pattern in patterns:
+            if pattern.match(test_token):
+                matched = True
+                break
+        
+        assert matched
+    
+    def test_private_key_pattern(self):
+        """Private key pattern should match PEM headers."""
+        patterns = get_patterns_by_type(SecretType.PRIVATE_KEY)
+        test_key = "-----BEGIN RSA PRIVATE KEY-----"
+        
+        matched = False
+        for pattern in patterns:
+            if pattern.match(test_key):
+                matched = True
+                break
+        
+        assert matched
+    
+    def test_pattern_has_suggestion(self):
+        """All patterns should have remediation suggestions."""
+        patterns = get_all_patterns()
+        for pattern in patterns:
+            assert pattern.suggestion
+            assert len(pattern.suggestion) > 0
+
+
+class TestSecretPatternMatching:
+    """Tests for pattern matching in content."""
+    
+    def test_match_aws_key_in_code(self, sample_secret_content):
+        """Should find AWS keys in sample content."""
+        patterns = get_patterns_by_type(SecretType.AWS_ACCESS_KEY)
+        
+        found = False
+        for pattern in patterns:
+            matches = pattern.match(sample_secret_content)
+            if matches:
+                found = True
+                break
+        
+        assert found
+    
+    def test_match_github_token_in_code(self, sample_secret_content):
+        """Should find GitHub token in sample content."""
+        patterns = get_patterns_by_type(SecretType.GITHUB_TOKEN)
+        
+        found = False
+        for pattern in patterns:
+            matches = pattern.match(sample_secret_content)
+            if matches:
+                found = True
+                break
+        
+        assert found
+    
+    def test_match_private_key_in_code(self, sample_secret_content):
+        """Should find private key in sample content."""
+        patterns = get_patterns_by_type(SecretType.PRIVATE_KEY)
+        
+        found = False
+        for pattern in patterns:
+            matches = pattern.match(sample_secret_content)
+            if matches:
+                found = True
+                break
+        
+        assert found
