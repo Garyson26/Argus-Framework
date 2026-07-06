@@ -116,3 +116,72 @@ def _is_likely_not_secret(data: str) -> bool:
     if sum([has_upper, has_lower, has_digit]) < 2:
         return True
     
+    return False
+
+
+def find_high_entropy_strings(
+    text: str,
+    threshold: float = 4.5,
+    min_length: int = 20,
+    max_length: int = 200,
+) -> list[dict]:
+    """
+    Find high-entropy strings in text.
+    
+    Args:
+        text: Text to search
+        threshold: Entropy threshold
+        min_length: Minimum string length
+        max_length: Maximum string length
+        
+    Returns:
+        List of dicts with 'value', 'entropy', 'start', 'end'
+    """
+    results = []
+    
+    # Split text into potential secret tokens
+    # Look for strings that could be secrets (alphanumeric with special chars)
+    import re
+    
+    # Pattern for potential secrets
+    pattern = r'[A-Za-z0-9+/=_\-]{' + str(min_length) + ',' + str(max_length) + '}'
+    
+    for match in re.finditer(pattern, text):
+        value = match.group()
+        
+        if is_high_entropy(value, threshold, min_length, max_length):
+            entropy = calculate_entropy(value)
+            results.append({
+                'value': value,
+                'entropy': entropy,
+                'start': match.start(),
+                'end': match.end(),
+            })
+    
+    return results
+
+
+def calculate_confidence(
+    entropy: float,
+    threshold: float = 4.5,
+    max_entropy: float = 6.0,
+) -> float:
+    """
+    Calculate confidence score based on entropy.
+    
+    Args:
+        entropy: Calculated entropy value
+        threshold: Minimum entropy threshold
+        max_entropy: Maximum expected entropy
+        
+    Returns:
+        Confidence score between 0.0 and 1.0
+    """
+    if entropy < threshold:
+        return 0.0
+    
+    # Scale confidence from 0.5 at threshold to 1.0 at max_entropy
+    normalized = (entropy - threshold) / (max_entropy - threshold)
+    confidence = 0.5 + (normalized * 0.5)
+    
+    return min(1.0, max(0.0, confidence))

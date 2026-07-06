@@ -335,3 +335,104 @@ GENERIC_PATTERNS = [
     ),
 ]
 
+OTHER_SERVICE_PATTERNS = [
+    SecretPattern(
+        name="Twilio API Key",
+        secret_type=SecretType.TWILIO_KEY,
+        pattern=r"SK[0-9a-fA-F]{32}",
+        severity=Severity.HIGH,
+        description="Twilio API Key found",
+        suggestion="Rotate this key in Twilio Console",
+        confidence=0.9,
+    ),
+    SecretPattern(
+        name="SendGrid API Key",
+        secret_type=SecretType.SENDGRID_KEY,
+        pattern=r"SG\.[a-zA-Z0-9\-_]{22}\.[a-zA-Z0-9\-_]{43}",
+        severity=Severity.HIGH,
+        description="SendGrid API Key found",
+        suggestion="Rotate this key in SendGrid settings",
+        confidence=0.98,
+    ),
+    SecretPattern(
+        name="NPM Token",
+        secret_type=SecretType.NPM_TOKEN,
+        pattern=r"npm_[a-zA-Z0-9]{36}",
+        severity=Severity.HIGH,
+        description="NPM access token found",
+        suggestion="Revoke this token in npm settings",
+        confidence=0.98,
+    ),
+    SecretPattern(
+        name="PyPI Token",
+        secret_type=SecretType.PYPI_TOKEN,
+        pattern=r"pypi-AgEIcHlwaS5vcmc[A-Za-z0-9\-_]{50,}",
+        severity=Severity.HIGH,
+        description="PyPI API token found",
+        suggestion="Revoke this token in PyPI settings",
+        confidence=0.98,
+    ),
+    SecretPattern(
+        name="Heroku API Key",
+        secret_type=SecretType.HEROKU_KEY,
+        pattern=r"(?i)heroku[_-]?api[_-]?key['\"]?\s*[:=]\s*['\"]?([a-f0-9-]{36})['\"]?",
+        severity=Severity.HIGH,
+        description="Heroku API Key found",
+        suggestion="Regenerate API key in Heroku dashboard",
+        confidence=0.85,
+    ),
+    SecretPattern(
+        name="Telegram Bot Token",
+        secret_type=SecretType.TELEGRAM_TOKEN,
+        pattern=r"[0-9]{9,10}:[a-zA-Z0-9_-]{35}",
+        severity=Severity.HIGH,
+        description="Telegram Bot Token found",
+        suggestion="Revoke this token via @BotFather",
+        confidence=0.85,
+    ),
+    SecretPattern(
+        name="Discord Bot Token",
+        secret_type=SecretType.DISCORD_TOKEN,
+        pattern=r"(?:mfa\.)?[a-zA-Z0-9_-]{24}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{27}",
+        severity=Severity.HIGH,
+        description="Discord Bot Token found",
+        suggestion="Regenerate token in Discord Developer Portal",
+        confidence=0.9,
+    ),
+    SecretPattern(
+        name="Sentry DSN",
+        secret_type=SecretType.SENTRY_DSN,
+        pattern=r"https://[a-f0-9]{32}@[a-z0-9]+\.ingest\.sentry\.io/[0-9]+",
+        severity=Severity.LOW,
+        description="Sentry DSN found (includes secret key)",
+        suggestion="Use environment variables for Sentry DSN",
+        confidence=0.95,
+    ),
+]
+
+
+def get_all_patterns() -> list[SecretPattern]:
+    """Get all secret detection patterns."""
+    return (
+        AWS_PATTERNS +
+        PRIVATE_KEY_PATTERNS +
+        GITHUB_PATTERNS +
+        GITLAB_PATTERNS +
+        SLACK_PATTERNS +
+        GOOGLE_PATTERNS +
+        JWT_PATTERNS +
+        DATABASE_PATTERNS +
+        STRIPE_PATTERNS +
+        GENERIC_PATTERNS +
+        OTHER_SERVICE_PATTERNS
+    )
+
+
+def get_patterns_by_type(secret_type: SecretType) -> list[SecretPattern]:
+    """Get patterns for a specific secret type."""
+    return [p for p in get_all_patterns() if p.secret_type == secret_type]
+
+
+def get_patterns_by_severity(severity: Severity) -> list[SecretPattern]:
+    """Get patterns for a specific severity level."""
+    return [p for p in get_all_patterns() if p.severity == severity]
