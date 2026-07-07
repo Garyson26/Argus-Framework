@@ -99,3 +99,52 @@ def mock_s3_buckets():
     ]
 
 
+@pytest.fixture
+def mock_iam_users():
+    """Mock IAM user data for testing."""
+    return [
+        {
+            "UserName": "admin-user",
+            "Arn": "arn:aws:iam::123456789012:user/admin-user",
+            "CreateDate": "2024-01-01T00:00:00Z",
+        },
+        {
+            "UserName": "service-user",
+            "Arn": "arn:aws:iam::123456789012:user/service-user",
+            "CreateDate": "2024-01-02T00:00:00Z",
+        },
+    ]
+
+
+@pytest.fixture
+def mock_overly_permissive_policy():
+    """Mock overly permissive IAM policy."""
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "*",
+                "Resource": "*"
+            }
+        ]
+    }
+
+
+@pytest.fixture
+def mock_escalation_policy():
+    """Mock policy with privilege escalation risk."""
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "iam:CreateAccessKey",
+                    "iam:AttachUserPolicy",
+                    "iam:PassRole"
+                ],
+                "Resource": "*"
+            }
+        ]
+    }
