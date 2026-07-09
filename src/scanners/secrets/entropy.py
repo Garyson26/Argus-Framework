@@ -44,7 +44,7 @@ def calculate_entropy(data: str) -> float:
 
 def is_high_entropy(
     data: str,
-    threshold: float = 4.5,
+    threshold: float = 4.2,
     min_length: int = 20,
     max_length: int = 200,
 ) -> bool:
@@ -53,7 +53,7 @@ def is_high_entropy(
     
     Args:
         data: String to check
-        threshold: Entropy threshold (default 4.5)
+        threshold: Entropy threshold (default 4.2)
         min_length: Minimum string length to consider
         max_length: Maximum string length to consider
         
@@ -121,7 +121,7 @@ def _is_likely_not_secret(data: str) -> bool:
 
 def find_high_entropy_strings(
     text: str,
-    threshold: float = 4.5,
+    threshold: float = 4.2,
     min_length: int = 20,
     max_length: int = 200,
 ) -> list[dict]:
@@ -163,7 +163,7 @@ def find_high_entropy_strings(
 
 def calculate_confidence(
     entropy: float,
-    threshold: float = 4.5,
+    threshold: float = 4.2,
     max_entropy: float = 6.0,
 ) -> float:
     """
