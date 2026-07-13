@@ -98,3 +98,40 @@ class TestScanResult:
         assert result.low_count == 1
         assert result.info_count == 1
     
+    def test_scan_result_to_dict(self):
+        """Should convert scan result to dictionary."""
+        result = ScanResult(
+            scan_type="cloud",
+            target="aws-account",
+            status="completed",
+            findings=[
+                Finding("R1", Severity.HIGH, "Issue", "desc"),
+            ],
+        )
+        
+        data = result.to_dict()
+        
+        assert data["scan_type"] == "cloud"
+        assert data["target"] == "aws-account"
+        assert data["total_findings"] == 1
+        assert data["severity_counts"]["high"] == 1
+        assert len(data["findings"]) == 1
+
+
+class TestSeverity:
+    """Tests for Severity enum."""
+    
+    def test_severity_values(self):
+        """Should have correct severity values."""
+        assert Severity.CRITICAL.value == "critical"
+        assert Severity.HIGH.value == "high"
+        assert Severity.MEDIUM.value == "medium"
+        assert Severity.LOW.value == "low"
+        assert Severity.INFO.value == "info"
+    
+    def test_severity_comparison(self):
+        """Severities should be comparable."""
+        severities = [Severity.LOW, Severity.HIGH, Severity.CRITICAL, Severity.MEDIUM, Severity.INFO]
+        # Should be sortable by string value
+        sorted_sevs = sorted(severities, key=lambda s: s.value)
+        assert len(sorted_sevs) == 5
