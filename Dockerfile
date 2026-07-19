@@ -27,3 +27,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy wheels from builder
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache-dir /wheels/*
+
+# Install Checkov for IaC scanning
+RUN pip install --no-cache-dir checkov
+
+# Copy application
+COPY . .
+
+# Create reports directory
+RUN mkdir -p /app/reports
+
+# Set environment
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Default entrypoint
+ENTRYPOINT ["argus"]
+CMD ["--help"]
