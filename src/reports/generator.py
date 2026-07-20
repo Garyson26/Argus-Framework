@@ -530,3 +530,4 @@ class ReportGenerator:
         """Generate SARIF 2.1.0 report (WIP)."""
         # TODO map findings -> sarif results, rule ids -> rules
         raise NotImplementedError("sarif output not done yet")
+        # TODO: github code scanning upload?
