@@ -126,7 +126,7 @@ class Settings(BaseSettings):
     @classmethod
     def validate_report_format(cls, v: str) -> str:
         """Validate report format."""
-        valid_formats = {"json", "markdown", "html"}
+        valid_formats = {"json", "markdown", "html", "sarif"}
         v_lower = v.lower()
         if v_lower not in valid_formats:
             raise ValueError(f"report_format must be one of {valid_formats}")
