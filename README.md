@@ -189,3 +189,10 @@ C4Context
     Rel(argus, postgres, "Persists Audit Data")
 ```
 
+---
+
+
+
+## 📄 License
+
+Argus is licensed under the [Apache License, Version 2.0](LICENSE).
