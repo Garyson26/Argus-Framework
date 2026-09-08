@@ -9,16 +9,6 @@
   <br>
   The all-seeing AWS cloud security audit framework — <i>a hundred eyes on your infrastructure, never all asleep at once.</i> 👁️
 </p>
-
-<p align="center">
-  <a href="#-key-features">Key Features</a> •
-  <a href="#-how-it-works">How It Works</a> •
-  <a href="#-installation">Installation</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-usage-guide">Usage Guide</a> •
-  <a href="CONTRIBUTING.md">Contributing</a>
-</p>
-
 ---
 
 ## 🌟 Key Features
