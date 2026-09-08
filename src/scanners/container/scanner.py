@@ -1,5 +1,5 @@
 """
-Container Security Scanner for FuFuFaFa.
+Container Security Scanner for Argus.
 
 Scans container images and Kubernetes manifests for security issues.
 

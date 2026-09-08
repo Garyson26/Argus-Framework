@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "fufufafa"
+name = "argus-cloud"
 version = "0.2.0"
-description = "Framework for Unified Flaw & Fault Auditing - AWS Cloud Security Audit Tool"
+description = "Automated Risk & Governance Unified Scanner - AWS Cloud Security Audit Tool"
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
 requires-python = ">=3.9"
 authors = [
-    { name = "FuFuFaFa Team" }
+    { name = "Argus Team" }
 ]
 keywords = ["security", "aws", "cloud", "audit", "iac", "secrets", "iam"]
 classifiers = [
@@ -18,7 +18,7 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
@@ -89,13 +89,13 @@ dev = [
 ]
 
 [project.scripts]
-fufufafa = "src.main:app"
+argus = "src.main:app"
 
 [project.urls]
-Homepage = "https://github.com/Masriyan/FuFuFaFa"
-Documentation = "https://github.com/Masriyan/FuFuFaFa#readme"
-Repository = "https://github.com/Masriyan/FuFuFaFa"
-Issues = "https://github.com/Masriyan/FuFuFaFa/issues"
+Homepage = "https://github.com/Garyson26/Argus-Framework"
+Documentation = "https://github.com/Garyson26/Argus-Framework#readme"
+Repository = "https://github.com/Garyson26/Argus-Framework"
+Issues = "https://github.com/Garyson26/Argus-Framework/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]

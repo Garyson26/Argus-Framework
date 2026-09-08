@@ -1,5 +1,5 @@
 """
-Database session management for FuFuFaFa.
+Database session management for Argus.
 
 Provides async session factory and initialization for PostgreSQL.
 """

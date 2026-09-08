@@ -1,5 +1,5 @@
 """
-Secret detection patterns for FuFuFaFa.
+Secret detection patterns for Argus.
 
 Comprehensive regex patterns for detecting hardcoded credentials, API keys,
 private keys, tokens, and other sensitive data.

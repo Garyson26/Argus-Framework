@@ -1,5 +1,5 @@
 """
-AWS IAM & Permission Analyzer for FuFuFaFa.
+AWS IAM & Permission Analyzer for Argus.
 
 Analyzes IAM policies and permissions to detect:
 - Privilege escalation paths

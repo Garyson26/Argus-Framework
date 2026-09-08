@@ -1,5 +1,5 @@
 """
-Base scanner class for all FuFuFaFa scanners.
+Base scanner class for all Argus scanners.
 
 Provides common interface and utilities for scanner implementations.
 """

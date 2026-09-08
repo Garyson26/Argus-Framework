@@ -1,5 +1,5 @@
 """
-Secret leak scanner for FuFuFaFa.
+Secret leak scanner for Argus.
 
 Scans repositories and directories for hardcoded secrets, API keys,
 and other sensitive credentials using pattern matching and entropy analysis.

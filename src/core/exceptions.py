@@ -1,12 +1,12 @@
 """
-Custom exceptions for FuFuFaFa.
+Custom exceptions for Argus.
 
 Provides a hierarchy of exceptions for different error types.
 """
 
 
-class FuFuFaFaError(Exception):
-    """Base exception for all FuFuFaFa errors."""
+class ArgusError(Exception):
+    """Base exception for all Argus errors."""
 
     def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
@@ -19,13 +19,13 @@ class FuFuFaFaError(Exception):
         return self.message
 
 
-class ConfigurationError(FuFuFaFaError):
+class ConfigurationError(ArgusError):
     """Raised when there's a configuration issue."""
 
     pass
 
 
-class ScanError(FuFuFaFaError):
+class ScanError(ArgusError):
     """Raised when a scan fails."""
 
     def __init__(
@@ -35,7 +35,7 @@ class ScanError(FuFuFaFaError):
         self.scan_type = scan_type
 
 
-class AWSError(FuFuFaFaError):
+class AWSError(ArgusError):
     """Raised when AWS API operations fail."""
 
     def __init__(
@@ -50,13 +50,13 @@ class AWSError(FuFuFaFaError):
         self.operation = operation
 
 
-class DatabaseError(FuFuFaFaError):
+class DatabaseError(ArgusError):
     """Raised when database operations fail."""
 
     pass
 
 
-class ValidationError(FuFuFaFaError):
+class ValidationError(ArgusError):
     """Raised when input validation fails."""
 
     def __init__(self, message: str, field: str | None = None, details: dict | None = None):
@@ -64,7 +64,7 @@ class ValidationError(FuFuFaFaError):
         self.field = field
 
 
-class GitError(FuFuFaFaError):
+class GitError(ArgusError):
     """Raised when Git operations fail."""
 
     def __init__(
@@ -74,7 +74,7 @@ class GitError(FuFuFaFaError):
         self.repository = repository
 
 
-class Neo4jError(FuFuFaFaError):
+class Neo4jError(ArgusError):
     """Raised when Neo4j operations fail."""
 
     pass

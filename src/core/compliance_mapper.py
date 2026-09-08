@@ -1,5 +1,5 @@
 """
-Compliance Framework Mapper for FuFuFaFa.
+Compliance Framework Mapper for Argus.
 
 Maps security findings to compliance frameworks and standards including:
 - CIS Benchmarks
@@ -63,7 +63,7 @@ class ComplianceMapping:
     Maps rule IDs to compliance controls.
     
     Attributes:
-        rule_id: FuFuFaFa rule identifier
+        rule_id: Argus rule identifier
         controls: List of mapped compliance controls
     """
     
@@ -399,7 +399,7 @@ class ComplianceMapper:
         
         Args:
             framework: Target framework
-            rule_id: FuFuFaFa rule ID
+            rule_id: Argus rule ID
             control: Compliance control
         """
         if framework not in self._mappings:

@@ -1,5 +1,5 @@
 """
-Git helper utilities for FuFuFaFa.
+Git helper utilities for Argus.
 
 Provides repository cloning, commit history traversal, and file content extraction.
 """
@@ -72,7 +72,7 @@ class GitHelper:
         Returns:
             Path to cloned repository
         """
-        self._temp_dir = tempfile.mkdtemp(prefix="fufufafa_")
+        self._temp_dir = tempfile.mkdtemp(prefix="argus_")
         
         # Inject auth token if provided
         clone_url = url

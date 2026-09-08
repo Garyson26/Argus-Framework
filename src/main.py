@@ -1,5 +1,5 @@
 """
-Main CLI entry point for FuFuFaFa.
+Main CLI entry point for Argus.
 
 Provides a beautiful, user-friendly command-line interface using Typer.
 """
@@ -19,8 +19,8 @@ from src.core.logger import setup_logging, console as log_console
 
 # Initialize Typer app
 app = typer.Typer(
-    name="fufufafa",
-    help="🛡️ FuFuFaFa - Framework for Unified Flaw & Fault Auditing",
+    name="argus",
+    help="🛡️ Argus - Automated Risk & Governance Unified Scanner",
     add_completion=True,
     rich_markup_mode="rich",
     no_args_is_help=True,
@@ -43,15 +43,15 @@ console = Console()
 BANNER = """
 ╔═══════════════════════════════════════════════════════════════════════════╗
 ║                                                                           ║
-║     ███████╗██╗   ██╗███████╗██╗   ██╗███████╗ █████╗ ███████╗ █████╗     ║
-║     ██╔════╝██║   ██║██╔════╝██║   ██║██╔════╝██╔══██╗██╔════╝██╔══██╗    ║
-║     █████╗  ██║   ██║█████╗  ██║   ██║█████╗  ███████║█████╗  ███████║    ║
-║     ██╔══╝  ██║   ██║██╔══╝  ██║   ██║██╔══╝  ██╔══██║██╔══╝  ██╔══██║    ║
-║     ██║     ╚██████╔╝██║     ╚██████╔╝██║     ██║  ██║██║     ██║  ██║    ║
-║     ╚═╝      ╚═════╝ ╚═╝      ╚═════╝ ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝    ║
+║                 █████╗ ██████╗  ██████╗ ██╗   ██╗███████╗                 ║
+║                ██╔══██╗██╔══██╗██╔════╝ ██║   ██║██╔════╝                 ║
+║                ███████║██████╔╝██║  ███╗██║   ██║███████╗                 ║
+║                ██╔══██║██╔══██╗██║   ██║██║   ██║╚════██║                 ║
+║                ██║  ██║██║  ██║╚██████╔╝╚██████╔╝███████║                 ║
+║                ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚══════╝                 ║
 ║                                                                           ║
-║            Framework for Unified Flaw & Fault Auditing                    ║
-║                   AWS Cloud Security Made Easy 😴                         ║
+║                Automated Risk & Governance Unified Scanner                ║
+║                  AWS Cloud Security, Always Watching 👁️                  ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -60,8 +60,8 @@ def version_callback(value: bool) -> None:
     """Print version and exit."""
     if value:
         console.print(Panel(
-            f"[bold cyan]FuFuFaFa[/] v{__version__}\n"
-            "[dim]Framework for Unified Flaw & Fault Auditing[/]",
+            f"[bold cyan]Argus[/] v{__version__}\n"
+            "[dim]Automated Risk & Governance Unified Scanner[/]",
             title="🛡️ Version Info",
             border_style="cyan"
         ))
@@ -100,7 +100,7 @@ def main(
     ),
 ) -> None:
     """
-    🛡️ FuFuFaFa - Framework for Unified Flaw & Fault Auditing
+    🛡️ Argus - Automated Risk & Governance Unified Scanner
     
     A comprehensive AWS cloud security audit tool that helps you identify:
     
@@ -109,7 +109,7 @@ def main(
     • 📜 Infrastructure as Code vulnerabilities
     • 👤 IAM permission abuse and escalation paths
     
-    Use [bold]fufufafa --help[/] to see available commands.
+    Use [bold]argus --help[/] to see available commands.
     """
     log_level = "DEBUG" if debug else None
     setup_logging(log_level)
@@ -158,9 +158,9 @@ def secret_scan(
     using pattern matching and entropy analysis.
     
     Examples:
-        fufufafa secret scan ./my-repo
-        fufufafa secret scan ./my-repo --no-history
-        fufufafa secret scan ./my-repo -o results.json
+        argus secret scan ./my-repo
+        argus secret scan ./my-repo --no-history
+        argus secret scan ./my-repo -o results.json
     """
     console.print(Panel(
         f"[bold]Scanning for secrets in:[/] {path}\n"
@@ -221,10 +221,10 @@ def cloud_scan(
     for common security issues.
     
     Examples:
-        fufufafa cloud scan
-        fufufafa cloud scan my-profile
-        fufufafa cloud scan --regions us-east-1,eu-west-1
-        fufufafa cloud scan -s s3,iam -o results.json
+        argus cloud scan
+        argus cloud scan my-profile
+        argus cloud scan --regions us-east-1,eu-west-1
+        argus cloud scan -s s3,iam -o results.json
     """
     profile_display = profile or "default"
     regions_display = regions or "all"
@@ -293,9 +293,9 @@ def iac_scan(
     Uses Checkov as the underlying scanning engine.
     
     Examples:
-        fufufafa iac scan ./terraform/
-        fufufafa iac scan ./cloudformation/template.yaml
-        fufufafa iac scan ./k8s/ -f kubernetes
+        argus iac scan ./terraform/
+        argus iac scan ./cloudformation/template.yaml
+        argus iac scan ./k8s/ -f kubernetes
     """
     console.print(Panel(
         f"[bold]Scanning IaC at:[/] {path}\n"
@@ -357,9 +357,9 @@ def iam_analyze(
     overly permissive policies, and unused permissions.
     
     Examples:
-        fufufafa iam analyze
-        fufufafa iam analyze my-profile
-        fufufafa iam analyze --no-unused -o report.json
+        argus iam analyze
+        argus iam analyze my-profile
+        argus iam analyze --no-unused -o report.json
     """
     profile_display = profile or "default"
     
@@ -464,7 +464,7 @@ def show_config() -> None:
     """
     settings = get_settings()
     
-    table = Table(title="⚙️ FuFuFaFa Configuration")
+    table = Table(title="⚙️ Argus Configuration")
     table.add_column("Setting", style="cyan")
     table.add_column("Value", style="green")
     

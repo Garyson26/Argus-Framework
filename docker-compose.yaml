@@ -4,17 +4,17 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: fufufafa-postgres
+    container_name: argus-postgres
     environment:
-      POSTGRES_USER: fufufafa
-      POSTGRES_PASSWORD: fufufafa_secret
-      POSTGRES_DB: fufufafa
+      POSTGRES_USER: argus
+      POSTGRES_PASSWORD: argus_secret
+      POSTGRES_DB: argus
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fufufafa"]
+      test: ["CMD-SHELL", "pg_isready -U argus"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,7 +22,7 @@ services:
   # Redis for Celery
   redis:
     image: redis:7-alpine
-    container_name: fufufafa-redis
+    container_name: argus-redis
     ports:
       - "6379:6379"
     volumes:
@@ -36,7 +36,7 @@ services:
   # Neo4j Graph Database
   neo4j:
     image: neo4j:5-community
-    container_name: fufufafa-neo4j
+    container_name: argus-neo4j
     environment:
       NEO4J_AUTH: neo4j/neo4j_secret
       NEO4J_PLUGINS: '["apoc"]'
@@ -52,24 +52,24 @@ services:
       timeout: 10s
       retries: 5
 
-  # FuFuFaFa Application
-  fufufafa:
+  # Argus Application
+  argus:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fufufafa-app
+    container_name: argus-app
     environment:
-      FUFUFAFA_POSTGRES_HOST: postgres
-      FUFUFAFA_POSTGRES_PORT: 5432
-      FUFUFAFA_POSTGRES_USER: fufufafa
-      FUFUFAFA_POSTGRES_PASSWORD: fufufafa_secret
-      FUFUFAFA_POSTGRES_DB: fufufafa
-      FUFUFAFA_REDIS_HOST: redis
-      FUFUFAFA_REDIS_PORT: 6379
-      FUFUFAFA_NEO4J_URI: bolt://neo4j:7687
-      FUFUFAFA_NEO4J_USER: neo4j
-      FUFUFAFA_NEO4J_PASSWORD: neo4j_secret
-      FUFUFAFA_DEBUG: "false"
+      ARGUS_POSTGRES_HOST: postgres
+      ARGUS_POSTGRES_PORT: 5432
+      ARGUS_POSTGRES_USER: argus
+      ARGUS_POSTGRES_PASSWORD: argus_secret
+      ARGUS_POSTGRES_DB: argus
+      ARGUS_REDIS_HOST: redis
+      ARGUS_REDIS_PORT: 6379
+      ARGUS_NEO4J_URI: bolt://neo4j:7687
+      ARGUS_NEO4J_USER: neo4j
+      ARGUS_NEO4J_PASSWORD: neo4j_secret
+      ARGUS_DEBUG: "false"
     volumes:
       - ./reports:/app/reports
       - ~/.aws:/root/.aws:ro  # Mount AWS credentials
@@ -86,19 +86,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fufufafa-worker
+    container_name: argus-worker
     command: celery -A src.worker.tasks worker --loglevel=info
     environment:
-      FUFUFAFA_POSTGRES_HOST: postgres
-      FUFUFAFA_POSTGRES_PORT: 5432
-      FUFUFAFA_POSTGRES_USER: fufufafa
-      FUFUFAFA_POSTGRES_PASSWORD: fufufafa_secret
-      FUFUFAFA_POSTGRES_DB: fufufafa
-      FUFUFAFA_REDIS_HOST: redis
-      FUFUFAFA_REDIS_PORT: 6379
-      FUFUFAFA_NEO4J_URI: bolt://neo4j:7687
-      FUFUFAFA_NEO4J_USER: neo4j
-      FUFUFAFA_NEO4J_PASSWORD: neo4j_secret
+      ARGUS_POSTGRES_HOST: postgres
+      ARGUS_POSTGRES_PORT: 5432
+      ARGUS_POSTGRES_USER: argus
+      ARGUS_POSTGRES_PASSWORD: argus_secret
+      ARGUS_POSTGRES_DB: argus
+      ARGUS_REDIS_HOST: redis
+      ARGUS_REDIS_PORT: 6379
+      ARGUS_NEO4J_URI: bolt://neo4j:7687
+      ARGUS_NEO4J_USER: neo4j
+      ARGUS_NEO4J_PASSWORD: neo4j_secret
     volumes:
       - ~/.aws:/root/.aws:ro
     depends_on:

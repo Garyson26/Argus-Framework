@@ -1,5 +1,5 @@
 """
-AWS Boto3 helper utilities for FuFuFaFa.
+AWS Boto3 helper utilities for Argus.
 
 Provides session management, pagination handling, and rate limiting for AWS API calls.
 """
@@ -92,7 +92,7 @@ class AWSClient:
             
             assume_params = {
                 "RoleArn": self.assume_role_arn,
-                "RoleSessionName": "FuFuFaFaSession",
+                "RoleSessionName": "ArgusSession",
                 "DurationSeconds": 3600,
             }
             

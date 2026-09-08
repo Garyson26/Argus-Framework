@@ -1,5 +1,5 @@
 """
-AWS Cloud misconfiguration scanner for FuFuFaFa.
+AWS Cloud misconfiguration scanner for Argus.
 
 Scans AWS accounts for security misconfigurations across multiple services
 including S3, EC2, IAM, RDS, Lambda, VPC, and more.

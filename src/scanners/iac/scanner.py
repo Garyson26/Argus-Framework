@@ -1,5 +1,5 @@
 """
-Infrastructure as Code (IaC) scanner for FuFuFaFa.
+Infrastructure as Code (IaC) scanner for Argus.
 
 Scans Terraform, CloudFormation, Serverless, and Kubernetes manifests
 for security misconfigurations using Checkov as the underlying engine.

@@ -1,5 +1,5 @@
 """
-Celery task definitions for FuFuFaFa.
+Celery task definitions for Argus.
 
 Provides async task execution for long-running scans.
 """
@@ -15,7 +15,7 @@ settings = get_settings()
 
 # Initialize Celery
 celery_app = Celery(
-    "fufufafa",
+    "argus",
     broker=settings.celery_broker,
     backend=settings.celery_backend,
 )
@@ -45,7 +45,7 @@ def run_async(coro):
         loop.close()
 
 
-@celery_app.task(bind=True, name="fufufafa.tasks.secret_scan")
+@celery_app.task(bind=True, name="argus.tasks.secret_scan")
 def run_secret_scan(
     self,
     target_path: str,
@@ -79,7 +79,7 @@ def run_secret_scan(
     return result
 
 
-@celery_app.task(bind=True, name="fufufafa.tasks.cloud_scan")
+@celery_app.task(bind=True, name="argus.tasks.cloud_scan")
 def run_cloud_scan(
     self,
     profile: str = None,
@@ -111,7 +111,7 @@ def run_cloud_scan(
     return result
 
 
-@celery_app.task(bind=True, name="fufufafa.tasks.iac_scan")
+@celery_app.task(bind=True, name="argus.tasks.iac_scan")
 def run_iac_scan(
     self,
     target_path: str,
@@ -142,7 +142,7 @@ def run_iac_scan(
     return result
 
 
-@celery_app.task(bind=True, name="fufufafa.tasks.iam_analyze")
+@celery_app.task(bind=True, name="argus.tasks.iam_analyze")
 def run_iam_analysis(
     self,
     profile: str = None,

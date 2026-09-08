@@ -1,8 +1,8 @@
 """
-Pydantic-based configuration management for FuFuFaFa.
+Pydantic-based configuration management for Argus.
 
 Environment variables can be loaded from a .env file or set directly.
-All settings use the FUFUFAFA_ prefix.
+All settings use the ARGUS_ prefix.
 """
 
 from functools import lru_cache
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     """Application settings with validation."""
 
     model_config = SettingsConfigDict(
-        env_prefix="FUFUFAFA_",
+        env_prefix="ARGUS_",
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     )
 
     # Application
-    app_name: str = "FuFuFaFa"
+    app_name: str = "Argus"
     app_version: str = "0.1.0"
     debug: bool = False
     log_level: str = "INFO"
@@ -32,9 +32,9 @@ class Settings(BaseSettings):
     # PostgreSQL Database
     postgres_host: str = "localhost"
     postgres_port: int = 5432
-    postgres_user: str = "fufufafa"
-    postgres_password: str = "fufufafa_secret"
-    postgres_db: str = "fufufafa"
+    postgres_user: str = "argus"
+    postgres_password: str = "argus_secret"
+    postgres_db: str = "argus"
 
     @property
     def postgres_url(self) -> str:

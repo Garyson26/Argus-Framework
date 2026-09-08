@@ -45,5 +45,5 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 # Default entrypoint
-ENTRYPOINT ["fufufafa"]
+ENTRYPOINT ["argus"]
 CMD ["--help"]

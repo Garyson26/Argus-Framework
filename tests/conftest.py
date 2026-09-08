@@ -1,5 +1,5 @@
 """
-Test configuration for FuFuFaFa.
+Test configuration for Argus.
 """
 
 import pytest

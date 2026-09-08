@@ -1,6 +1,6 @@
-# Contributing to FuFuFaFa
+# Contributing to Argus
 
-First off, thank you for considering contributing to **FuFuFaFa**! 🎉 Your contributions help make cloud security auditing accessible to everyone.
+First off, thank you for considering contributing to **Argus**! 🎉 Your contributions help make cloud security auditing accessible to everyone.
 
 ## 📋 Table of Contents
 
@@ -33,8 +33,8 @@ This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDU
 
 ```bash
 # 1. Fork and clone the repository
-git clone https://github.com/Masriyan/FuFuFaFa.git
-cd FuFuFaFa
+git clone https://github.com/Garyson26/Argus-Framework.git
+cd Argus
 
 # 2. Create a virtual environment
 python -m venv .venv
@@ -47,7 +47,7 @@ pip install -e ".[dev]"
 docker-compose up -d postgres redis neo4j
 
 # 5. Initialize the database
-fufufafa init-db
+argus init-db
 
 # 6. Install pre-commit hooks
 pre-commit install
@@ -234,7 +234,7 @@ class TestSecretScanner:
 ---
 
 <p align="center">
-  <strong>Thank you for contributing to FuFuFaFa! 🛡️</strong>
+  <strong>Thank you for contributing to Argus! 🛡️</strong>
   <br>
   <sub>Together, we make cloud security accessible to everyone.</sub>
 </p>

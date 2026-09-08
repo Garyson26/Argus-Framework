@@ -1,5 +1,5 @@
 """
-Progress tracking utilities for FuFuFaFa.
+Progress tracking utilities for Argus.
 
 Provides Rich-based progress bars and concurrent task tracking for scans.
 """

@@ -1,5 +1,5 @@
 """
-Custom YAML Rules Engine for FuFuFaFa.
+Custom YAML Rules Engine for Argus.
 
 Allows users to define custom secret detection patterns and security
 rules using YAML configuration files.
@@ -131,7 +131,7 @@ class CustomRule:
 
 class RulesEngine:
     """
-    Custom rules engine for FuFuFaFa.
+    Custom rules engine for Argus.
     
     Loads and manages custom rules from YAML files.
     """

@@ -1,5 +1,5 @@
 """
-Logging configuration for FuFuFaFa.
+Logging configuration for Argus.
 
 Provides structured logging with Rich console output for beautiful CLI experience.
 """
@@ -14,8 +14,8 @@ from rich.theme import Theme
 
 from src.config import get_settings
 
-# Custom theme for FuFuFaFa
-FUFUFAFA_THEME = Theme(
+# Custom theme for Argus
+ARGUS_THEME = Theme(
     {
         "info": "cyan",
         "warning": "yellow",
@@ -34,7 +34,7 @@ FUFUFAFA_THEME = Theme(
 )
 
 # Global console instance
-console = Console(theme=FUFUFAFA_THEME, stderr=True)
+console = Console(theme=ARGUS_THEME, stderr=True)
 
 # Logger cache
 _loggers: dict[str, logging.Logger] = {}
@@ -102,7 +102,7 @@ class ScanLogger:
     def __init__(self, scan_type: str, target: str):
         self.scan_type = scan_type
         self.target = target
-        self.logger = get_logger(f"fufufafa.scanner.{scan_type}")
+        self.logger = get_logger(f"argus.scanner.{scan_type}")
 
     def start(self) -> None:
         """Log scan start."""

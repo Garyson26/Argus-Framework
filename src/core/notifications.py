@@ -1,5 +1,5 @@
 """
-Webhook Notifications for FuFuFaFa.
+Webhook Notifications for Argus.
 
 Sends notifications to external services when scans complete or
 critical findings are detected.
@@ -144,7 +144,7 @@ class NotificationService:
             severity = Severity.MEDIUM
         
         payload = NotificationPayload(
-            title=f"FuFuFaFa Scan Complete: {scan_results.get('scan_type', 'Unknown')}",
+            title=f"Argus Scan Complete: {scan_results.get('scan_type', 'Unknown')}",
             message=self._build_message(scan_results),
             severity=severity,
             scan_type=scan_results.get("scan_type", "unknown"),
@@ -272,7 +272,7 @@ class NotificationService:
                             "short": True,
                         },
                     ],
-                    "footer": "FuFuFaFa Security Scanner",
+                    "footer": "Argus Security Scanner",
                     "ts": int(payload.timestamp.timestamp()),
                 }
             ]
@@ -329,7 +329,7 @@ class NotificationService:
                         {"name": "High", "value": str(payload.high_count), "inline": True},
                         {"name": "Total", "value": str(payload.findings_count), "inline": True},
                     ],
-                    "footer": {"text": "FuFuFaFa Security Scanner"},
+                    "footer": {"text": "Argus Security Scanner"},
                     "timestamp": payload.timestamp.isoformat(),
                 }
             ]
@@ -357,7 +357,7 @@ class NotificationService:
             "payload": {
                 "summary": payload.title,
                 "severity": severity_map.get(payload.severity, "warning"),
-                "source": "fufufafa",
+                "source": "argus",
                 "custom_details": {
                     "target": payload.target,
                     "scan_type": payload.scan_type,

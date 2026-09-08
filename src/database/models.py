@@ -1,5 +1,5 @@
 """
-SQLAlchemy ORM models for FuFuFaFa.
+SQLAlchemy ORM models for Argus.
 
 Defines the database schema for scans, findings, IAM entities, and AWS accounts.
 """

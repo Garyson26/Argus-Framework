@@ -1,21 +1,21 @@
 <p align="center">
-  <img src="assets/banner.png" alt="FuFuFaFa Banner" width="100%"/>
+  <img src="assets/banner.png" alt="Argus Banner" width="100%"/>
 </p>
 
-# 🛡️ FuFuFaFa Framework
+# 🛡️ Argus Framework
 
 <p align="center">
-  <a href="https://github.com/Masriyan/FuFuFaFa/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/Masriyan/FuFuFaFa?style=for-the-badge&color=blue" alt="License">
+  <a href="https://github.com/Garyson26/Argus-Framework/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/Garyson26/Argus-Framework?style=for-the-badge&color=blue" alt="License">
   </a>
-  <a href="https://github.com/Masriyan/FuFuFaFa/commits/main">
-    <img src="https://img.shields.io/github/last-commit/Masriyan/FuFuFaFa?style=for-the-badge&color=green" alt="Last Commit">
+  <a href="https://github.com/Garyson26/Argus-Framework/commits/main">
+    <img src="https://img.shields.io/github/last-commit/Garyson26/Argus-Framework?style=for-the-badge&color=green" alt="Last Commit">
   </a>
-  <a href="https://github.com/Masriyan/FuFuFaFa/issues">
-    <img src="https://img.shields.io/github/issues/Masriyan/FuFuFaFa?style=for-the-badge&color=orange" alt="Issues">
+  <a href="https://github.com/Garyson26/Argus-Framework/issues">
+    <img src="https://img.shields.io/github/issues/Garyson26/Argus-Framework?style=for-the-badge&color=orange" alt="Issues">
   </a>
-  <a href="https://pypi.org/project/fufufafa/">
-    <img src="https://img.shields.io/pypi/v/fufufafa?style=for-the-badge&color=yellow" alt="PyPI">
+  <a href="https://pypi.org/project/argus-cloud/">
+    <img src="https://img.shields.io/pypi/v/argus-cloud?style=for-the-badge&color=yellow" alt="PyPI">
   </a>
   <a href="https://www.python.org/">
     <img src="https://img.shields.io/badge/Python-3.9%2B-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python">
@@ -23,9 +23,9 @@
 </p>
 
 <p align="center">
-  <strong>Framework for Unified Flaw & Fault Auditing</strong>
+  <strong>Automated Risk & Governance Unified Scanner</strong>
   <br>
-  The ultimate AWS Cloud Security Audit Framework that makes security auditing <i>so easy, you can do it even when you're sleepy!</i> 😴
+  The all-seeing AWS cloud security audit framework — <i>a hundred eyes on your infrastructure, never all asleep at once.</i> 👁️
 </p>
 
 <p align="center">
@@ -68,7 +68,7 @@
 
 ## 🔄 How It Works
 
-FuFuFaFa streamlines your security auditing workflow. Here is the process flow:
+Argus streamlines your security auditing workflow. Here is the process flow:
 
 ```mermaid
 graph TD
@@ -115,8 +115,8 @@ graph TD
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Masriyan/FuFuFaFa.git
-cd FuFuFaFa
+git clone https://github.com/Garyson26/Argus-Framework.git
+cd Argus
 
 # 2. Set up virtual environment
 python -m venv .venv
@@ -129,7 +129,7 @@ pip install -e ".[dev]"
 docker-compose up -d postgres redis neo4j
 
 # 5. Initialize database
-fufufafa init-db
+argus init-db
 ```
 
 ---
@@ -140,16 +140,16 @@ Get up and running in seconds!
 
 ```bash
 # 1. Verify installation
-fufufafa --version
+argus --version
 
 # 2. Run a secret scan on a local repo
-fufufafa secret scan ./your-project
+argus secret scan ./your-project
 
 # 3. Scan your default AWS profile
-fufufafa cloud scan
+argus cloud scan
 
 # 4. View help for more commands
-fufufafa --help
+argus --help
 ```
 
 ---
@@ -160,7 +160,7 @@ fufufafa --help
 Find hidden secrets in your code, even deep in git history.
 
 ```bash
-fufufafa secret scan ./target-repo --history
+argus secret scan ./target-repo --history
 ```
 **Options:**
 - `--history`: Scan full git history
@@ -171,7 +171,7 @@ fufufafa secret scan ./target-repo --history
 Audit your AWS environment for security gaps.
 
 ```bash
-fufufafa cloud scan --profile production --regions us-east-1,us-west-2
+argus cloud scan --profile production --regions us-east-1,us-west-2
 ```
 **Options:**
 - `--profile`: Specify AWS CLI profile
@@ -182,14 +182,14 @@ fufufafa cloud scan --profile production --regions us-east-1,us-west-2
 Shift left by scanning your infrastructure code.
 
 ```bash
-fufufafa iac scan ./terraform-files
+argus iac scan ./terraform-files
 ```
 
 ### 🕸️ IAM Analysis
 Visualize permission paths and find dangerous roles.
 
 ```bash
-fufufafa iam analyze --graph
+argus iam analyze --graph
 ```
 *Note: Requires Neo4j service to be running.*
 
@@ -197,23 +197,23 @@ fufufafa iam analyze --graph
 
 ## 🏗️ Architecture
 
-The FuFuFaFa framework is built for modularity and scalability.
+The Argus framework is built for modularity and scalability.
 
 ```mermaid
 C4Context
-    title System Context Diagram for FuFuFaFa
+    title System Context Diagram for Argus
 
-    Person(user, "Security Auditor", "Uses FuFuFaFa to audit cloud security.")
-    System(fufufafa, "FuFuFaFa Framework", "CLI tool for scanning secrets, cloud config, IaC, and IAM.")
+    Person(user, "Security Auditor", "Uses Argus to audit cloud security.")
+    System(argus, "Argus Framework", "CLI tool for scanning secrets, cloud config, IaC, and IAM.")
     
     System_Ext(aws, "AWS Cloud", "Target environment for auditing.")
     System_Ext(neo4j, "Neo4j Database", "Stores IAM graph relationships.")
     System_Ext(postgres, "PostgreSQL", "Stores finding results and reports.")
     
-    Rel(user, fufufafa, "Runs CLI commands")
-    Rel(fufufafa, aws, "Reads configuration via API")
-    Rel(fufufafa, neo4j, "Queries/Updates Graph")
-    Rel(fufufafa, postgres, "Persists Audit Data")
+    Rel(user, argus, "Runs CLI commands")
+    Rel(argus, aws, "Reads configuration via API")
+    Rel(argus, neo4j, "Queries/Updates Graph")
+    Rel(argus, postgres, "Persists Audit Data")
 ```
 
 ---
@@ -222,12 +222,21 @@ C4Context
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-- **Found a bug?** Open an [Issue](https://github.com/Masriyan/FuFuFaFa/issues)
+- **Found a bug?** Open an [Issue](https://github.com/Garyson26/Argus-Framework/issues)
 - **Security concern?** See [SECURITY.md](SECURITY.md)
 - **Code of Conduct?** See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 ---
 
+## 📄 License
+
+Argus is licensed under the [Apache License, Version 2.0](LICENSE).
+
+It derives from *FuFuFaFa — Framework for Unified Flaw & Fault Auditing* by sudo3rs,
+originally released under the MIT License. That notice is preserved in [NOTICE](NOTICE).
+
+---
+
 <p align="center">
-  Made with ❤️ and ☕ by the FuFuFaFa Team
+  Made with ❤️ and ☕ by the Argus Team
 </p>

@@ -1,11 +1,32 @@
 # Changelog
 
-All notable changes to FuFuFaFa will be documented in this file.
+All notable changes to Argus will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+
+## [Unreleased]
+
+### Changed
+- **Project renamed**: `FuFuFaFa Framework` is now **Argus** - Automated Risk &
+  Governance Unified Scanner. The CLI command is `argus`, the PyPI distribution
+  is `argus-cloud`, environment variables use the `ARGUS_` prefix, and Docker
+  services, Celery task names, and the Postgres database are renamed to match.
+- **License changed** from MIT to the Apache License, Version 2.0. The original
+  MIT copyright and permission notice is preserved in `NOTICE`.
+- Repository moved to https://github.com/Garyson26/Argus-Framework
+- New project banner (`assets/banner.png`), now a true PNG at 1600x400.
+
+### Migration notes
+- Rename any `FUFUFAFA_*` environment variables to `ARGUS_*`; the old names are
+  ignored and settings silently fall back to defaults.
+- The Postgres database, user, and password default to `argus` / `argus_secret`.
+  Existing volumes still hold the `fufufafa` database and need renaming or
+  recreating.
+- Queued Celery tasks named `fufufafa.tasks.*` will not route to the renamed
+  `argus.tasks.*` handlers.
 
 ## [0.2.0] - 2026-01-20
 
