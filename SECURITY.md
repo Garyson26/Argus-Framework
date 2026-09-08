@@ -32,4 +32,4 @@ When using Argus, we recommend the following best practices:
 ## License
 
 This project is licensed under the Apache License, Version 2.0.
-See [LICENSE](LICENSE) and [NOTICE](NOTICE) for details.
+See [LICENSE](LICENSE) for details.

@@ -232,9 +232,6 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 Argus is licensed under the [Apache License, Version 2.0](LICENSE).
 
-It derives from *FuFuFaFa — Framework for Unified Flaw & Fault Auditing* by sudo3rs,
-originally released under the MIT License. That notice is preserved in [NOTICE](NOTICE).
-
 ---
 
 <p align="center">
