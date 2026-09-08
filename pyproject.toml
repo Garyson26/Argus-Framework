@@ -1,0 +1,154 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "argus-cloud"
+version = "0.2.0"
+description = "Automated Risk & Governance Unified Scanner - AWS Cloud Security Audit Tool"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.9"
+authors = [
+    { name = "Argus Team" }
+]
+keywords = ["security", "aws", "cloud", "audit", "iac", "secrets", "iam"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: System :: Systems Administration",
+]
+
+dependencies = [
+    # CLI Framework
+    "typer>=0.23.2",
+    "rich>=15.0.0",
+    
+    # AWS SDK (capped by checkov, which pins boto3==1.35.49)
+    "boto3>=1.35.49",
+    "botocore>=1.35.49",
+    
+    # Database - PostgreSQL
+    "sqlalchemy[asyncio]>=2.0.52",
+    "asyncpg>=0.31.0",
+    "alembic>=1.16.5",
+    "psycopg2-binary>=2.9.12",
+    
+    # Database - Neo4j
+    "neo4j>=5.28.5",
+    
+    # Task Queue
+    "celery>=5.6.3",
+    "redis>=7.0.1",
+    
+    # Configuration
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.11.0",
+    
+    # Git Operations
+    "gitpython>=3.1.62",
+    
+    # Secret Detection
+    "python-magic>=0.4.27",
+    
+    # IaC Scanning (Checkov)
+    "checkov>=3.3.16",
+    
+    # YAML/JSON Parsing
+    "pyyaml>=6.0.3",
+    
+    # HTTP Requests
+    "httpx>=0.28.1",
+    
+    # Async Support
+    "anyio>=4.12.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.1.0",
+    "pytest-mock>=3.15.1",
+    "black>=25.11.0",
+    "flake8>=7.3.0",
+    "isort>=6.1.0",
+    "mypy>=1.19.1",
+    "pre-commit>=4.3.0",
+    "moto>=5.1.22",  # AWS mocking
+]
+
+[project.scripts]
+argus = "src.main:app"
+
+[project.urls]
+Homepage = "https://github.com/Garyson26/Argus-Framework"
+Documentation = "https://github.com/Garyson26/Argus-Framework#readme"
+Repository = "https://github.com/Garyson26/Argus-Framework"
+Issues = "https://github.com/Garyson26/Argus-Framework/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | migrations
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["src"]
+skip = ["migrations", ".venv"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = ["*/tests/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
