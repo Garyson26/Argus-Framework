@@ -231,9 +231,3 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## 📄 License
 
 Argus is licensed under the [Apache License, Version 2.0](LICENSE).
-
----
-
-<p align="center">
-  Made with ❤️ and ☕ by the Argus Team
-</p>
