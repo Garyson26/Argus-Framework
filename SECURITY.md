@@ -14,7 +14,7 @@ We support the latest version of Argus. Please update to the most recent release
 We take security seriously. If you discover a security vulnerability within Argus, please follow these steps:
 
 1.  **Do not open a public issue.** Security vulnerabilities should be handled discreetly to protect users.
-2.  **Email us.** Send a detailed report to security@argus.example.com [Replace with actual email if available, or instruct to use GitHub Security Advisories].
+2.  **Email us.** Send a detailed report to security@wiestell.com [Replace with actual email if available, or instruct to use GitHub Security Advisories].
     *   Include a description of the vulnerability.
     *   Provide steps to reproduce the issue.
     *   Attach any relevant proof-of-concept code or screenshots.
