@@ -5,24 +5,6 @@
 # 🛡️ Argus Framework
 
 <p align="center">
-  <a href="https://github.com/Garyson26/Argus-Framework/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/Garyson26/Argus-Framework?style=for-the-badge&color=blue" alt="License">
-  </a>
-  <a href="https://github.com/Garyson26/Argus-Framework/commits/main">
-    <img src="https://img.shields.io/github/last-commit/Garyson26/Argus-Framework?style=for-the-badge&color=green" alt="Last Commit">
-  </a>
-  <a href="https://github.com/Garyson26/Argus-Framework/issues">
-    <img src="https://img.shields.io/github/issues/Garyson26/Argus-Framework?style=for-the-badge&color=orange" alt="Issues">
-  </a>
-  <a href="https://pypi.org/project/argus-cloud/">
-    <img src="https://img.shields.io/pypi/v/argus-cloud?style=for-the-badge&color=yellow" alt="PyPI">
-  </a>
-  <a href="https://www.python.org/">
-    <img src="https://img.shields.io/badge/Python-3.9%2B-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python">
-  </a>
-</p>
-
-<p align="center">
   <strong>Automated Risk & Governance Unified Scanner</strong>
   <br>
   The all-seeing AWS cloud security audit framework — <i>a hundred eyes on your infrastructure, never all asleep at once.</i> 👁️
