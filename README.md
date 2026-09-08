@@ -191,15 +191,7 @@ C4Context
 
 ---
 
-## 🤝 Community & Support
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-- **Found a bug?** Open an [Issue](https://github.com/Garyson26/Argus-Framework/issues)
-- **Security concern?** See [SECURITY.md](SECURITY.md)
-- **Code of Conduct?** See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-
----
 
 ## 📄 License
 
