@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.15.0rc1-slim-bookworm as builder
+FROM python:3.15.0rc2-slim-bookworm as builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir build
 RUN pip wheel --no-cache-dir --wheel-dir /app/wheels .
 
 # Production stage
-FROM python:3.15.0rc1-slim-bookworm
+FROM python:3.15.0rc2-slim-bookworm
 
 WORKDIR /app
 
