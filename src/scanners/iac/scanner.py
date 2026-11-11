@@ -248,6 +248,12 @@ class IaCScanner(BaseScanner):
             
             if not output:
                 self._debug_log(f"Checkov stderr: {result.stderr}")
+                if result.returncode != 0:
+                    # Checkov crashed or rejected its arguments: nothing was scanned
+                    raise IaCScanError(
+                        f"Checkov exited with code {result.returncode} and no output: "
+                        f"{result.stderr.strip()[:500]}"
+                    )
                 return {"results": {"passed_checks": [], "failed_checks": [], "skipped_checks": []}}
             
             # Parse JSON output
