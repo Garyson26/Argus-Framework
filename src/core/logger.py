@@ -110,9 +110,14 @@ class ScanLogger:
             f"[scan.start]🔍 Starting {self.scan_type.upper()} scan on: {self.target}[/]"
         )
 
-    def end(self, findings_count: int) -> None:
-        """Log scan completion."""
-        if findings_count == 0:
+    def end(self, findings_count: int, errors_count: int = 0) -> None:
+        """Log scan completion. Never reports a clean scan if some checks could not run."""
+        if errors_count:
+            console.print(
+                f"[warning]⚠️ {self.scan_type.upper()} scan incomplete - {errors_count} check(s) "
+                f"could not run, {findings_count} issue(s) found[/]"
+            )
+        elif findings_count == 0:
             console.print(f"[success]✅ {self.scan_type.upper()} scan completed - No issues found![/]")
         else:
             console.print(

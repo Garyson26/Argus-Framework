@@ -435,6 +435,22 @@ def _display_scan_results(results: dict, scan_name: str, output: Optional[Path])
     
     console.print(table)
     
+    # Show checks that could not run (e.g. AccessDenied), so they are not mistaken for clean
+    scan_errors = results.get("metadata", {}).get("scan_errors", [])
+    if scan_errors:
+        error_table = Table(title="⚠️ Checks That Could Not Run")
+        error_table.add_column("Service", style="bold")
+        error_table.add_column("Region")
+        error_table.add_column("Error")
+        error_table.add_column("Count", justify="right")
+        grouped: dict[tuple, int] = {}
+        for err in scan_errors:
+            key = (err["service"], err.get("region") or "-", err["error_code"])
+            grouped[key] = grouped.get(key, 0) + 1
+        for (service, region, code), count in grouped.items():
+            error_table.add_row(service, region, code, str(count))
+        console.print(error_table)
+    
     # Save to file if specified
     if output:
         import json
@@ -445,6 +461,12 @@ def _display_scan_results(results: dict, scan_name: str, output: Optional[Path])
     if severity_counts["critical"] > 0 or severity_counts["high"] > 0:
         console.print("\n[red bold]⚠️ Critical or High severity issues found![/]")
         raise typer.Exit(1)
+    elif scan_errors:
+        console.print(
+            "\n[red bold]❌ Scan incomplete: some checks could not run, "
+            "so the account is NOT confirmed clean.[/]"
+        )
+        raise typer.Exit(2)
     elif total > 0:
         console.print("\n[yellow]⚡ Issues found, please review the results.[/]")
         raise typer.Exit(0)
