@@ -91,6 +91,9 @@ class AWSCloudScanner(BaseScanner):
         # Cache for API responses
         self._cache: dict[str, tuple[Any, datetime]] = {}
         
+        # Checks that could not run (e.g. AccessDenied), reported in the scan result
+        self._scan_errors: list[dict[str, Any]] = []
+        
         self._aws_client: Optional[AWSClient] = None
         self._scan_logger: Optional[ScanLogger] = None
         self._stats = {
@@ -149,6 +152,7 @@ class AWSCloudScanner(BaseScanner):
         started_at = datetime.utcnow()
         self.clear_findings()
         self.clear_cache()
+        self._scan_errors.clear()
         
         target = f"AWS Account (Profile: {self.profile or 'default'})"
         self._scan_logger = ScanLogger("cloud", target)
@@ -208,11 +212,12 @@ class AWSCloudScanner(BaseScanner):
                     "account_id": account_id,
                     "regions": scan_regions,
                     "services": self.services,
+                    "scan_errors": list(self._scan_errors),
                     **self._stats,
                 },
             )
             
-            self._scan_logger.end(len(self._findings))
+            self._scan_logger.end(len(self._findings), len(self._scan_errors))
             return result.to_dict()
             
         except AWSError:
@@ -225,6 +230,32 @@ class AWSCloudScanner(BaseScanner):
         """Log debug message if debug mode enabled."""
         if self.debug:
             logger.debug(f"[AWS SCAN] {message}")
+
+    def _record_error(
+        self,
+        service: str,
+        error: Exception,
+        region: Optional[str] = None,
+        resource: Optional[str] = None,
+    ) -> None:
+        """
+        Record a check that could not run, so the scan is not reported as clean.
+        
+        Args:
+            service: AWS service being checked (e.g. "s3")
+            error: Exception raised by the failed call
+            region: Region of the failed call, if any
+            resource: Resource the check was running on, if any
+        """
+        code = getattr(error, "response", {}).get("Error", {}).get("Code")
+        self._scan_errors.append({
+            "service": service,
+            "region": region,
+            "resource": resource,
+            "error_code": code or type(error).__name__,
+            "message": str(error),
+        })
+        self._debug_log(f"Error scanning {service} ({region or resource or 'global'}): {error}")
 
     def _get_enabled_regions(self) -> list[str]:
         """Get list of enabled regions."""
@@ -269,7 +300,7 @@ class AWSCloudScanner(BaseScanner):
                     async with self._lock:
                         self._stats["regions_scanned"] += 1
                 except Exception as e:
-                    self._debug_log(f"Error scanning {service_name} in {region}: {e}")
+                    self._record_error(service_name.lower(), e, region=region)
         
         tasks = [scan_with_semaphore(region) for region in regions]
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -308,6 +339,7 @@ class AWSCloudScanner(BaseScanner):
             buckets = s3.list_buckets().get("Buckets", [])
         except Exception as e:
             self._scan_logger.warning(f"Failed to list S3 buckets: {e}")
+            self._record_error("s3", e)
             return
         
         for bucket in buckets:
@@ -366,7 +398,7 @@ class AWSCloudScanner(BaseScanner):
                 self._scan_logger.finding("high", "Missing Public Access Block", bucket_name)
                 
         except Exception as e:
-            self._debug_log(f"Error checking public access for {bucket_name}: {e}")
+            self._record_error("s3", e, resource=bucket_name)
 
     async def _check_s3_encryption(self, s3, bucket_name: str) -> None:
         """Check if S3 bucket has encryption enabled."""
@@ -385,6 +417,8 @@ class AWSCloudScanner(BaseScanner):
                     suggestion="Enable default encryption using SSE-S3 or SSE-KMS",
                 ))
                 self._scan_logger.finding("medium", "S3 No Encryption", bucket_name)
+            else:
+                self._record_error("s3", e, resource=bucket_name)
 
     async def _check_s3_versioning(self, s3, bucket_name: str) -> None:
         """Check if S3 bucket has versioning enabled."""
@@ -404,7 +438,7 @@ class AWSCloudScanner(BaseScanner):
                     suggestion="Enable versioning for data protection and recovery",
                 ))
         except Exception as e:
-            self._debug_log(f"Error checking versioning for {bucket_name}: {e}")
+            self._record_error("s3", e, resource=bucket_name)
 
     async def _check_s3_logging(self, s3, bucket_name: str) -> None:
         """Check if S3 bucket has access logging enabled."""
@@ -423,7 +457,7 @@ class AWSCloudScanner(BaseScanner):
                     suggestion="Enable access logging for audit and security monitoring",
                 ))
         except Exception as e:
-            self._debug_log(f"Error checking logging for {bucket_name}: {e}")
+            self._record_error("s3", e, resource=bucket_name)
 
     # =========================================================================
     # EC2 SCANNING
@@ -483,7 +517,7 @@ class AWSCloudScanner(BaseScanner):
                                 ))
                                 
         except Exception as e:
-            self._debug_log(f"Error checking security groups in {region}: {e}")
+            self._record_error("ec2", e, region=region)
 
     def _get_port_info(self, rule: dict) -> dict:
         """Extract port information from security group rule."""
@@ -513,7 +547,7 @@ class AWSCloudScanner(BaseScanner):
                         metadata={"region": region, "size": volume.get("Size")},
                     ))
         except Exception as e:
-            self._debug_log(f"Error checking EBS volumes in {region}: {e}")
+            self._record_error("ec2", e, region=region)
 
     async def _add_finding_async(self, finding: Finding) -> None:
         """Thread-safe finding addition."""
@@ -635,7 +669,7 @@ class AWSCloudScanner(BaseScanner):
                             ))
                             
         except Exception as e:
-            self._debug_log(f"Error checking IAM users: {e}")
+            self._record_error("iam", e)
 
     # =========================================================================
     # RDS SCANNING
@@ -698,7 +732,7 @@ class AWSCloudScanner(BaseScanner):
                     ))
                     
         except Exception as e:
-            self._debug_log(f"Error scanning RDS in {region}: {e}")
+            self._record_error("rds", e, region=region)
 
     # =========================================================================
     # LAMBDA SCANNING
@@ -754,7 +788,7 @@ class AWSCloudScanner(BaseScanner):
                     ))
                     
         except Exception as e:
-            self._debug_log(f"Error scanning Lambda in {region}: {e}")
+            self._record_error("lambda", e, region=region)
 
     # =========================================================================
     # VPC SCANNING
@@ -791,7 +825,7 @@ class AWSCloudScanner(BaseScanner):
                     self._scan_logger.finding("medium", "VPC No Flow Logs", vpc_id)
                     
         except Exception as e:
-            self._debug_log(f"Error scanning VPCs in {region}: {e}")
+            self._record_error("vpc", e, region=region)
 
     # =========================================================================
     # CLOUDTRAIL SCANNING
@@ -851,4 +885,4 @@ class AWSCloudScanner(BaseScanner):
                     ))
                     
         except Exception as e:
-            self._debug_log(f"Error scanning CloudTrail: {e}")
+            self._record_error("cloudtrail", e)
